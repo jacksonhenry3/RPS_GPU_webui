@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thermodynamic Strategy Evolution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: 'Lato', sans-serif; background-color: #f8f7f5; color: #5c524f; }
+        .panel { background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid #e7e2dd; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05); }
+        .control-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: #f87171; cursor: pointer; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background-color 0.2s; }
+        .control-slider::-moz-range-thumb { width: 18px; height: 18px; background: #f87171; cursor: pointer; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background-color 0.2s; }
+        .control-slider::-webkit-slider-thumb:hover { background-color: #ef4444; }
+        .control-slider::-moz-range-thumb:hover { background-color: #ef4444; }
+        .control-slider { background: #f0e9e4; }
+        .param-input { width: 6rem; background-color: #fdfaf6; border: 1px solid #f0e9e4; border-radius: 0.25rem; text-align: right; padding-right: 0.5rem; }
+        .param-input:focus { outline: none; border-color: #f87171; box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.3); }
+        .recording-dot { width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .color-swatch { width: 1rem; height: 1rem; border-radius: 0.25rem; border: 1px solid rgba(0,0,0,0.1); }
+        #gpu-display {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .perf-grid { display: grid; grid-template-columns: auto auto; gap: 0.1rem 0.75rem; justify-content: end; }
+        .perf-label { text-align: right; color: #8a7c78; }
+        .perf-value { font-family: 'Courier New', Courier, monospace; }
+    </style>
+</head>
+<body class="min-h-screen p-4 lg:p-8">
+    <div class="w-full max-w-screen-2xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-red-400 tracking-tight">Strategy Evolution</h1>
+            <p class="text-gray-500 mt-2 text-lg">An interactive simulation of wealth-mediated dynamics.</p>
+        </header>
+
+        <!-- Main layout grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <!-- Left Column: Simulation and charts -->
+            <div class="xl:col-span-1 flex flex-col gap-8">
+                <div class="flex-grow flex flex-col items-center justify-center">
+                    <main class="w-full panel p-4 sm:p-6">
+                        <div class="w-full aspect-square bg-stone-200 rounded-lg shadow-inner flex items-center justify-center">
+                            <img id="gpu-display" src="https://placehold.co/768x768/e7e2dd/5c524f?text=Simulation+Standby" alt="GPU Visualization" class="w-full h-full object-contain rounded-lg">
+                        </div>
+                        <div class="w-full mt-4 grid grid-cols-2 items-start text-sm text-gray-500">
+                            <div>
+                                <p>Time Step: <span id="frame-counter">0</span></p>
+                                <div class="flex items-center gap-2">
+                                    <div id="recording-indicator" class="recording-dot hidden"></div>
+                                    <p>Status: <span id="status-text" class="font-semibold text-orange-500">Paused</span></p>
+                                </div>
+                            </div>
+                            <div class="relative group text-right">
+                                <!-- Always visible stats -->
+                                <div class="perf-grid">
+                                    <span class="perf-label">FPS:</span><span id="fps-counter" class="perf-value">0</span>
+                                    <span class="perf-label">Frame Time:</span><span class="perf-value"><span id="frame-time">0.00</span>ms <span id="predicted-fps" class="text-gray-400"></span></span>
+                                </div>
+                                <!-- Tooltip that appears on hover -->
+                                <div class="absolute bottom-full mb-2 right-0
+                                            w-max p-3 rounded-lg shadow-xl bg-white border border-gray-200
+                                            opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                                    <div class="perf-grid text-xs">
+                                        <span class="perf-label font-semibold">Breakdown</span><span></span>
+                                        <span class="perf-label">Wait (ACK):</span><span class="perf-value"><span id="wait-time">0.00</span>ms</span>
+                                        <span class="perf-label">Sim:</span><span class="perf-value"><span id="sim-time">0.00</span>ms</span>
+                                        <span class="perf-label">Render:</span><span class="perf-value"><span id="render-time">0.00</span>ms</span>
+                                        <span class="perf-label">Encode:</span><span class="perf-value"><span id="encode-time">0.00</span>ms</span>
+                                        <span class="perf-label">Emit:</span><span class="perf-value"><span id="emit-time">0.00</span>ms</span>
+                                        <span class="perf-label">Other:</span><span class="perf-value"><span id="other-time">0.00</span>ms</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    <div class="w-full flex justify-around items-center text-sm text-gray-600 mt-4 p-3 bg-stone-100 rounded-md panel">
+                        <div class="flex items-center gap-2"><div class="color-swatch" style="background-color: rgb(44, 160, 148);"></div><span>Rock</span></div>
+                        <div class="flex items-center gap-2"><div class="color-swatch" style="background-color: rgb(255, 127, 14);"></div><span>Paper</span></div>
+                        <div class="flex items-center gap-2"><div class="color-swatch" style="background-color: rgb(148, 103, 189);"></div><span>Scissors</span></div>
+                    </div>
+                </div>
+                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner">
+                    <img id="strategy-chart" src="" alt="Strategy Population Chart" class="w-full h-auto rounded"/>
+                </div>
+                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner">
+                    <img id="neighbor-chart" src="" alt="Neighbor-Pair Likelihood Chart" class="w-full h-auto rounded"/>
+                </div>
+            </div>
+
+            <!-- Right Column: Controls -->
+            <aside class="xl:col-span-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-6 content-start">
+                <div class="panel p-4">
+                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">System</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-around items-center gap-3">
+                            <button id="start-pause-btn" class="flex-1 bg-red-400 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Start</button>
+                            <button id="reset-btn" class="flex-1 bg-red-400 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg opacity-80 hover:opacity-100">Reset</button>
+                            <button id="step-btn" class="flex-1 bg-stone-400 hover:bg-stone-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Step</button>
+                        </div>
+                        <div>
+                            <label for="render-speed" class="flex justify-between items-center text-sm"><span>Sim Steps per Frame</span><input type="number" id="render-speed-value" step="1" class="param-input font-mono text-gray-600"></label>
+                            <input id="render-speed" type="range" min="1" max="100" value="1" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                    </div>
+                </div>
+                <div class="panel p-4">
+                     <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">Capture</h3>
+                     <div class="grid grid-cols-2 gap-3">
+                         <button id="record-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Record Video</button>
+                         <button id="save-frame-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Save Frame</button>
+                         <a id="download-btn" class="col-span-2 bg-gray-400 text-white font-bold py-2 px-4 rounded-full shadow-md text-center cursor-not-allowed opacity-50">Download Video</a>
+                    </div>
+                </div>
+                <div class="panel p-4">
+                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">Render Control</h3>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="render-resolution" class="block text-sm mb-1">Output Width (px)</label>
+                                <input type="number" id="render-resolution" value="256" step="16" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
+                            <div>
+                                <label for="kymo-aspect" class="block text-sm mb-1">Kymo Aspect</label>
+                                <input type="number" id="kymo-aspect" value="3" step="0.1" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="jpeg-quality" class="flex justify-between items-center text-sm"><span>JPEG Quality</span><input type="number" id="jpeg-quality-value" step="1" class="param-input font-mono text-gray-600"></label>
+                            <input id="jpeg-quality" type="range" min="1" max="99" value="80" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                    </div>
+                </div>
+                <div class="panel p-4">
+                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">Network</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="network-type" class="block text-sm mb-1">Topology</label>
+                            <select id="network-type" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                <option value="ring_1d_periodic">1D Ring (Periodic)</option>
+                                <option value="ring_1d_hard">1D Line (Hard Boundary)</option>
+                                <option value="grid_2d_periodic">2D Grid (Periodic)</option>
+                                <option value="grid_2d_hard">2D Grid (Hard Boundary)</option>
+                                <option value="grid_2d_moore_periodic">2D Moore (Periodic)</option>
+                                <option value="grid_2d_moore_hard">2D Moore (Hard Boundary)</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="num-agents" class="block text-sm mb-1">Agents / Width</label>
+                            <input type="number" id="num-agents" value="128" step="1" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                        </div>
+                    </div>
+                </div>
+                <div class="panel p-4">
+                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">Initial Conditions</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="initial-condition" class="block text-sm mb-1">Strategy Distribution</label>
+                            <select id="initial-condition" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                <option value="random">Random</option>
+                                <option value="split">Split (Rock/Paper)</option>
+                                <option value="single_invader">Single Invader</option>
+                                <option value="all_rock">All Rock</option>
+                                <option value="vertical_stripes">3 Vertical Stripes</option>
+                                <option value="pie_slices">Pie Slices (2D only)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label id="bank-value-label" for="bank-condition" class="block text-sm mb-1">Bank Value</label>
+                            <div class="flex items-center gap-2">
+                                <select id="bank-condition" class="flex-grow bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                    <option value="constant">Constant</option>
+                                    <option value="random">Random</option>
+                                </select>
+                                <input type="number" id="bank-value-input" value="0" step="0.1" class="param-input font-mono text-gray-600">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel p-4">
+                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">Payoff Matrix</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="win-payoff" class="flex justify-between items-center text-sm"><span>Win Payoff</span><input type="number" id="win-payoff-value" step="0.1" class="param-input font-mono text-gray-600"></label>
+                            <input id="win-payoff" type="range" min="-10" max="10" value="2" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                        <div>
+                            <label for="tie-payoff" class="flex justify-between items-center text-sm"><span>Tie Payoff</span><input type="number" id="tie-payoff-value" step="0.1" class="param-input font-mono text-gray-600"></label>
+                            <input id="tie-payoff" type="range" min="-10" max="10" value="1.5" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                        <div>
+                            <label for="loss-payoff" class="flex justify-between items-center text-sm"><span>Loss Payoff</span><input type="number" id="loss-payoff-value" step="0.1" class="param-input font-mono text-gray-600"></label>
+                            <input id="loss-payoff" type="range" min="-10" max="10" value="0" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                    </div>
+                </div>
+                 <div class="panel p-4">
+                    <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">Dynamics</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="selection-mode" class="block text-sm mb-1">Selection Mode</label>
+                            <select id="selection-mode" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                <option value="local_choice">Local Random</option>
+                                <option value="global_random" selected>Global Random</option>
+                                <option value="deterministic">Deterministic</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="score-calculation-mode" class="block text-sm mb-1">Score Calculation</label>
+                            <select id="score-calculation-mode" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                <option value="total" selected>Neighborhood Total</option>
+                                <option value="average">Neighborhood Average</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="kt-param" class="flex justify-between items-center text-sm"><span>Effective Temp (kT)</span><input type="number" id="kt-param-value" step="0.1" class="param-input font-mono text-gray-600"></label>
+                            <input id="kt-param" type="range" min="0.1" max="200" value="100" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                         <div>
+                            <label for="history-length" class="flex justify-between items-center text-sm"><span>History Length</span><input type="text" id="history-length-value" class="param-input font-mono text-gray-600"></label>
+                            <input id="history-length" type="range" min="1" max="1001" value="1001" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    <script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const strategyChart = document.getElementById('strategy-chart');
+            const neighborChart = document.getElementById('neighbor-chart');
+            let isRunning = false;
+            let isRecording = false;
+            let frameCount = 0;
+            let chartUpdateTimer = null;
+            let socketPath = window.location.pathname;
+            if (!socketPath.endsWith('/')) { socketPath += '/'; }
+            const socket = io({path: socketPath + 'socket.io'});
+            let currentImageUrl = null;
+
+            function requestChartUpdate() {
+                if (chartUpdateTimer) return;
+                socket.emit('request_plot_update');
+                chartUpdateTimer = setTimeout(() => { chartUpdateTimer = null; }, 500);
+            }
+
+            function sendParamsToServer() {
+                const params = {
+                    win: parseFloat(document.getElementById('win-payoff').value),
+                    tie: parseFloat(document.getElementById('tie-payoff').value),
+                    loss: parseFloat(document.getElementById('loss-payoff').value),
+                    kT: parseFloat(document.getElementById('kt-param').value),
+                    renderSpeed: parseInt(document.getElementById('render-speed').value),
+                    networkType: document.getElementById('network-type').value,
+                    initialCondition: document.getElementById('initial-condition').value,
+                    selectionMode: document.getElementById('selection-mode').value,
+                    scoreCalculationMode: document.getElementById('score-calculation-mode').value,
+                    historyLength: parseInt(document.getElementById('history-length').value),
+                    bankCondition: document.getElementById('bank-condition').value,
+                    bankValue: parseFloat(document.getElementById('bank-value-input').value),
+                    numAgents: parseInt(document.getElementById('num-agents').value),
+                    renderResolution: parseInt(document.getElementById('render-resolution').value),
+                    jpegQuality: parseInt(document.getElementById('jpeg-quality').value),
+                    kymoAspect: parseFloat(document.getElementById('kymo-aspect').value)
+                };
+                socket.emit('update_params', params);
+            }
+
+            socket.on('connect', () => {
+                sendParamsToServer();
+                socket.emit('request_plot_update');
+                socket.emit('client_ready_for_next_frame');
+            });
+
+            socket.on('new_frame', (data) => {
+                if (data instanceof ArrayBuffer) {
+                    if (currentImageUrl) {
+                        URL.revokeObjectURL(currentImageUrl);
+                    }
+                    const blob = new Blob([data], { type: 'image/jpeg' });
+                    currentImageUrl = URL.createObjectURL(blob);
+                    document.getElementById('gpu-display').src = currentImageUrl;
+                    socket.emit('client_ready_for_next_frame');
+                    requestChartUpdate();
+                }
+            });
+
+            socket.on('frame_number_update', (data) => {
+                frameCount = data.frame_number;
+                document.getElementById('frame-counter').textContent = frameCount;
+            });
+
+            socket.on('perf_update', (data) => {
+                document.getElementById('fps-counter').textContent = data.fps;
+                document.getElementById('frame-time').textContent = data.frame;
+                const frameTime = parseFloat(data.frame);
+                if (frameTime > 0) {
+                    const predictedFps = 1000 / frameTime;
+                    document.getElementById('predicted-fps').textContent = `(~${Math.round(predictedFps)} FPS)`;
+                } else {
+                    document.getElementById('predicted-fps').textContent = '';
+                }
+                document.getElementById('sim-time').textContent = data.sim;
+                document.getElementById('render-time').textContent = data.render;
+                document.getElementById('encode-time').textContent = data.encode;
+                document.getElementById('emit-time').textContent = data.emit;
+                document.getElementById('wait-time').textContent = data.wait;
+                document.getElementById('other-time').textContent = data.other;
+            });
+
+            // (The rest of the script remains the same)
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                const valueInput = document.getElementById(`${slider.id}-value`);
+                const syncSliderToInput = () => { valueInput.value = (slider.id === 'history-length' && parseInt(slider.value) >= 1001) ? "Infinite" : slider.value; };
+                const syncInputToSlider = () => { slider.value = (valueInput.type === 'text' && valueInput.value.toLowerCase() === 'infinite') ? 1001 : valueInput.value; };
+                slider.addEventListener('input', syncSliderToInput);
+                valueInput.addEventListener('change', () => { syncInputToSlider(); sendParamsToServer(); });
+                slider.addEventListener('change', sendParamsToServer);
+                syncSliderToInput();
+            });
+            document.querySelectorAll('select, input[type="number"]').forEach(el => { el.addEventListener('change', sendParamsToServer); });
+            function updateBankUI() { document.getElementById('bank-value-label').textContent = (document.getElementById('bank-condition').value === 'random') ? 'Initial Bank (Random Scale)' : 'Initial Bank (Constant Value)';}
+            document.getElementById('bank-condition').addEventListener('change', () => { if (document.getElementById('bank-condition').value === 'random' && parseFloat(document.getElementById('bank-value-input').value) === 0) { document.getElementById('bank-value-input').value = 10;} updateBankUI(); sendParamsToServer(); });
+            updateBankUI();
+            document.getElementById('network-type').addEventListener('change', sendParamsToServer);
+
+            function updateButtonState() {
+                const startPauseBtn = document.getElementById('start-pause-btn');
+                const statusText = document.getElementById('status-text');
+                 if (isRunning) {
+                    startPauseBtn.textContent = 'Pause';
+                    startPauseBtn.classList.replace('bg-red-400', 'bg-gray-400');
+                    startPauseBtn.classList.replace('hover:bg-red-500', 'hover:bg-gray-500');
+                    statusText.textContent = 'Running';
+                    statusText.classList.replace('text-orange-500', 'text-green-600');
+                } else {
+                    startPauseBtn.textContent = 'Start';
+                    startPauseBtn.classList.replace('bg-gray-400', 'bg-red-400');
+                    startPauseBtn.classList.replace('hover:bg-gray-500', 'hover:bg-red-500');
+                    statusText.textContent = 'Paused';
+                    statusText.classList.replace('text-green-600', 'text-orange-500');
+                }
+            }
+            document.getElementById('start-pause-btn').addEventListener('click', () => { isRunning = !isRunning; if (isRunning) { socket.emit('start_simulation'); } else { socket.emit('pause_simulation'); } updateButtonState(); });
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                isRunning = false;
+                frameCount = 0;
+                document.getElementById('frame-counter').textContent = 0;
+                socket.emit('reset_simulation');
+                updateButtonState();
+            });
+            document.getElementById('step-btn').addEventListener('click', () => { if (isRunning) return; socket.emit('step_simulation'); });
+            document.getElementById('save-frame-btn').addEventListener('click', () => socket.emit('save_frame'));
+            document.getElementById('record-btn').addEventListener('click', () => {
+                const recordBtn = document.getElementById('record-btn');
+                isRecording = !isRecording;
+                if (isRecording) {
+                    socket.emit('start_recording');
+                    recordBtn.textContent = 'Stop';
+                    recordBtn.classList.replace('bg-blue-500', 'bg-red-500');
+                    document.getElementById('recording-indicator').classList.remove('hidden');
+                    document.getElementById('download-btn').classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    socket.emit('stop_recording');
+                    recordBtn.textContent = 'Processing...';
+                    recordBtn.disabled = true;
+                    document.getElementById('recording-indicator').classList.add('hidden');
+                }
+            });
+            function triggerDownload(url, filename) { const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+            socket.on('frame_saved', (data) => { if (data.url) triggerDownload(data.url, data.filename); });
+            socket.on('recording_ready', (data) => {
+                const recordBtn = document.getElementById('record-btn');
+                const downloadBtn = document.getElementById('download-btn');
+                recordBtn.textContent = 'Record Video';
+                recordBtn.disabled = false;
+                recordBtn.classList.replace('bg-red-500', 'bg-blue-500');
+                if (data.url) {
+                    downloadBtn.href = data.url;
+                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    downloadBtn.onclick = () => triggerDownload(data.url, data.filename);
+                }
+            });
+            window.addEventListener('keydown', (e) => { if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'select') return; if (e.code === 'Space') { e.preventDefault(); document.getElementById('start-pause-btn').click(); } else if (e.code === 'ArrowRight') { e.preventDefault(); document.getElementById('step-btn').click(); } else if (e.code.toLowerCase() === 'keyr') { e.preventDefault(); document.getElementById('reset-btn').click(); } });
+        });
+    </script>
+</body>
+</html>
+

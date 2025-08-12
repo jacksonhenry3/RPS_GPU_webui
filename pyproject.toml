@@ -1,0 +1,23 @@
+[project]
+name = "rps-gpu-webui"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # GPU packages
+    "cupy-cuda12x",
+    "nvidia-nvimgcodec-cu12",
+
+    # Web UI packages
+    "flask",
+    "flask-socketio",
+    "eventlet",
+
+    # Other utilities
+    "networkx",
+    "imageio",
+    "imageio-ffmpeg",
+    "scipy",
+    "matplotlib",
+]
