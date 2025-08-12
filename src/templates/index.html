@@ -22,13 +22,8 @@
         .recording-dot { width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .color-swatch { width: 1rem; height: 1rem; border-radius: 0.25rem; border: 1px solid rgba(0,0,0,0.1); }
-        #gpu-display {
-            image-rendering: -moz-crisp-edges;
-            image-rendering: -webkit-crisp-edges;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
-        }
-        .perf-grid { display: grid; grid-template-columns: auto auto; gap: 0.1rem 0.75rem; justify-content: end; }
+        #gpu-display { image-rendering: -moz-crisp-edges; image-rendering: -webkit-crisp-edges; image-rendering: pixelated; image-rendering: crisp-edges; }
+        .perf-grid { display: grid; grid-template-columns: auto auto; gap: 0.1rem 0.75rem; justify-content: end; align-items: center;}
         .perf-label { text-align: right; color: #8a7c78; }
         .perf-value { font-family: 'Courier New', Courier, monospace; }
     </style>
@@ -40,9 +35,7 @@
             <p class="text-gray-500 mt-2 text-lg">An interactive simulation of wealth-mediated dynamics.</p>
         </header>
 
-        <!-- Main layout grid -->
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <!-- Left Column: Simulation and charts -->
             <div class="xl:col-span-1 flex flex-col gap-8">
                 <div class="flex-grow flex flex-col items-center justify-center">
                     <main class="w-full panel p-4 sm:p-6">
@@ -58,23 +51,19 @@
                                 </div>
                             </div>
                             <div class="relative group text-right">
-                                <!-- Always visible stats -->
                                 <div class="perf-grid">
-                                    <span class="perf-label">FPS:</span><span id="fps-counter" class="perf-value">0</span>
-                                    <span class="perf-label">Frame Time:</span><span class="perf-value"><span id="frame-time">0.00</span>ms <span id="predicted-fps" class="text-gray-400"></span></span>
+                                    <span class="perf-label">Sim Rate:</span><span class="perf-value"><span id="sim-fps">0</span> steps/s</span>
+                                    <span class="perf-label">Render Rate:</span><span class="perf-value"><span id="render-fps">0.0</span> fps</span>
                                 </div>
-                                <!-- Tooltip that appears on hover -->
-                                <div class="absolute bottom-full mb-2 right-0
-                                            w-max p-3 rounded-lg shadow-xl bg-white border border-gray-200
-                                            opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                                <div class="absolute bottom-full mb-2 right-0 w-max p-3 rounded-lg shadow-xl bg-white border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                                     <div class="perf-grid text-xs">
-                                        <span class="perf-label font-semibold">Breakdown</span><span></span>
+                                        <span class="perf-label font-semibold">Render Breakdown</span><span></span>
+                                        <span class="perf-label">Frame Time:</span><span class="perf-value"><span id="frame-time">0.00</span>ms</span>
                                         <span class="perf-label">Wait (ACK):</span><span class="perf-value"><span id="wait-time">0.00</span>ms</span>
-                                        <span class="perf-label">Sim:</span><span class="perf-value"><span id="sim-time">0.00</span>ms</span>
                                         <span class="perf-label">Render:</span><span class="perf-value"><span id="render-time">0.00</span>ms</span>
+                                        <span class="perf-label">Scale:</span><span class="perf-value"><span id="scale-time">0.00</span>ms</span>
                                         <span class="perf-label">Encode:</span><span class="perf-value"><span id="encode-time">0.00</span>ms</span>
                                         <span class="perf-label">Emit:</span><span class="perf-value"><span id="emit-time">0.00</span>ms</span>
-                                        <span class="perf-label">Other:</span><span class="perf-value"><span id="other-time">0.00</span>ms</span>
                                     </div>
                                 </div>
                             </div>
@@ -86,15 +75,10 @@
                         <div class="flex items-center gap-2"><div class="color-swatch" style="background-color: rgb(148, 103, 189);"></div><span>Scissors</span></div>
                     </div>
                 </div>
-                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner">
-                    <img id="strategy-chart" src="" alt="Strategy Population Chart" class="w-full h-auto rounded"/>
-                </div>
-                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner">
-                    <img id="neighbor-chart" src="" alt="Neighbor-Pair Likelihood Chart" class="w-full h-auto rounded"/>
-                </div>
+                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner"><img id="strategy-chart" src="" alt="Strategy Population Chart" class="w-full h-auto rounded"/></div>
+                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner"><img id="neighbor-chart" src="" alt="Neighbor-Pair Likelihood Chart" class="w-full h-auto rounded"/></div>
             </div>
 
-            <!-- Right Column: Controls -->
             <aside class="xl:col-span-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-6 content-start">
                 <div class="panel p-4">
                     <h3 class="text-xl font-bold mb-4 text-red-400 border-b pb-2">System</h3>
@@ -134,6 +118,10 @@
                         <div>
                             <label for="jpeg-quality" class="flex justify-between items-center text-sm"><span>JPEG Quality</span><input type="number" id="jpeg-quality-value" step="1" class="param-input font-mono text-gray-600"></label>
                             <input id="jpeg-quality" type="range" min="1" max="99" value="80" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <label for="sync-mode-btn" class="text-sm font-medium text-gray-700">Force Sync Mode:</label>
+                            <button id="sync-mode-btn" class="px-4 py-1 text-sm font-semibold bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full transition-colors">Disabled</button>
                         </div>
                     </div>
                 </div>
@@ -233,23 +221,66 @@
     </div>
     <script>
         window.addEventListener('DOMContentLoaded', (event) => {
-            const strategyChart = document.getElementById('strategy-chart');
-            const neighborChart = document.getElementById('neighbor-chart');
+            const socket = io({path: window.location.pathname.replace(/\/?$/, '/socket.io')});
             let isRunning = false;
             let isRecording = false;
-            let frameCount = 0;
-            let chartUpdateTimer = null;
-            let socketPath = window.location.pathname;
-            if (!socketPath.endsWith('/')) { socketPath += '/'; }
-            const socket = io({path: socketPath + 'socket.io'});
-            let currentImageUrl = null;
+            let isSynchronized = false;
 
-            function requestChartUpdate() {
-                if (chartUpdateTimer) return;
-                socket.emit('request_plot_update');
-                chartUpdateTimer = setTimeout(() => { chartUpdateTimer = null; }, 500);
-            }
+            // --- Socket Event Handlers ---
+            socket.on('connect', () => {
+                sendParamsToServer();
+                socket.emit('client_ready_for_next_frame');
+            });
 
+            socket.on('new_frame', (data) => {
+                if (data instanceof ArrayBuffer) {
+                    const blob = new Blob([data], { type: 'image/jpeg' });
+                    const newImageUrl = URL.createObjectURL(blob);
+                    const imgElement = document.getElementById('gpu-display');
+                    imgElement.onload = () => {
+                        if (imgElement.dataset.previousUrl) {
+                            URL.revokeObjectURL(imgElement.dataset.previousUrl);
+                        }
+                        imgElement.dataset.previousUrl = newImageUrl;
+                        socket.emit('client_ready_for_next_frame');
+                    };
+                    imgElement.src = newImageUrl;
+                }
+            });
+
+            socket.on('frame_number_update', (data) => {
+                document.getElementById('frame-counter').textContent = data.frame_number;
+            });
+
+            socket.on('perf_update', (data) => {
+                document.getElementById('sim-fps').textContent = data.sim_fps;
+                document.getElementById('render-fps').textContent = data.render_fps;
+                document.getElementById('frame-time').textContent = data.frame;
+                document.getElementById('wait-time').textContent = data.wait;
+                document.getElementById('render-time').textContent = data.render;
+                document.getElementById('scale-time').textContent = data.scale || '0.00';
+                document.getElementById('encode-time').textContent = data.encode;
+                document.getElementById('emit-time').textContent = data.emit;
+            });
+            
+            socket.on('recording_ready', (data) => {
+                const recordBtn = document.getElementById('record-btn');
+                const downloadBtn = document.getElementById('download-btn');
+                recordBtn.textContent = 'Record Video';
+                recordBtn.disabled = false;
+                recordBtn.classList.replace('bg-red-500', 'bg-blue-500');
+                if (data.url) {
+                    downloadBtn.href = data.url;
+                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    downloadBtn.onclick = () => triggerDownload(data.url, data.filename);
+                }
+            });
+
+            socket.on('frame_saved', (data) => { 
+                if (data.url) triggerDownload(data.url, data.filename); 
+            });
+
+            // --- UI & Control Logic ---
             function sendParamsToServer() {
                 const params = {
                     win: parseFloat(document.getElementById('win-payoff').value),
@@ -272,64 +303,81 @@
                 socket.emit('update_params', params);
             }
 
-            socket.on('connect', () => {
-                sendParamsToServer();
-                socket.emit('request_plot_update');
-                socket.emit('client_ready_for_next_frame');
-            });
+            function setupEventListeners() {
+                // Parameter controls
+                document.querySelectorAll('input[type="range"]').forEach(slider => {
+                    const valueInput = document.getElementById(`${slider.id}-value`);
+                    if (!valueInput) return;
+                    const syncSliderToInput = () => { valueInput.value = (slider.id === 'history-length' && parseInt(slider.value) >= 1001) ? "Infinite" : slider.value; };
+                    const syncInputToSlider = () => { slider.value = (valueInput.type === 'text' && valueInput.value.toLowerCase() === 'infinite') ? 1001 : valueInput.value; };
+                    slider.addEventListener('input', syncSliderToInput);
+                    valueInput.addEventListener('change', () => { syncInputToSlider(); sendParamsToServer(); });
+                    slider.addEventListener('change', sendParamsToServer);
+                    syncSliderToInput();
+                });
+                const standaloneControls = [
+                    'network-type', 'initial-condition', 'selection-mode', 'score-calculation-mode',
+                    'bank-condition', 'bank-value-input', 'num-agents', 'render-resolution', 'kymo-aspect',
+                    'render-speed-value', 'jpeg-quality-value', 'win-payoff-value', 'tie-payoff-value', 'loss-payoff-value', 'kt-param-value'
+                ];
+                standaloneControls.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.addEventListener('change', sendParamsToServer);
+                });
 
-            socket.on('new_frame', (data) => {
-                if (data instanceof ArrayBuffer) {
-                    if (currentImageUrl) {
-                        URL.revokeObjectURL(currentImageUrl);
+                // Sync mode button
+                const syncBtn = document.getElementById('sync-mode-btn');
+                syncBtn.addEventListener('click', () => {
+                    isSynchronized = !isSynchronized;
+                    socket.emit('set_sync_mode', { 'is_synchronized': isSynchronized });
+                    updateSyncButtonUI();
+                });
+
+                // Main simulation control buttons
+                document.getElementById('start-pause-btn').addEventListener('click', () => {
+                    isRunning = !isRunning;
+                    if (isRunning) socket.emit('start_simulation');
+                    else socket.emit('pause_simulation');
+                    updateButtonState();
+                });
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    isRunning = false;
+                    socket.emit('reset_simulation');
+                    updateButtonState();
+                });
+                document.getElementById('step-btn').addEventListener('click', () => {
+                    if (isRunning) return;
+                    socket.emit('step_simulation');
+                });
+
+                // Capture buttons
+                document.getElementById('save-frame-btn').addEventListener('click', () => socket.emit('save_frame'));
+                document.getElementById('record-btn').addEventListener('click', () => {
+                    const recordBtn = document.getElementById('record-btn');
+                    isRecording = !isRecording;
+                    if (isRecording) {
+                        socket.emit('start_recording');
+                        recordBtn.textContent = 'Stop';
+                        recordBtn.classList.replace('bg-blue-500', 'bg-red-500');
+                        document.getElementById('recording-indicator').classList.remove('hidden');
+                        document.getElementById('download-btn').classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        socket.emit('stop_recording');
+                        recordBtn.textContent = 'Processing...';
+                        recordBtn.disabled = true;
+                        document.getElementById('recording-indicator').classList.add('hidden');
                     }
-                    const blob = new Blob([data], { type: 'image/jpeg' });
-                    currentImageUrl = URL.createObjectURL(blob);
-                    document.getElementById('gpu-display').src = currentImageUrl;
-                    socket.emit('client_ready_for_next_frame');
-                    requestChartUpdate();
-                }
-            });
+                });
 
-            socket.on('frame_number_update', (data) => {
-                frameCount = data.frame_number;
-                document.getElementById('frame-counter').textContent = frameCount;
-            });
-
-            socket.on('perf_update', (data) => {
-                document.getElementById('fps-counter').textContent = data.fps;
-                document.getElementById('frame-time').textContent = data.frame;
-                const frameTime = parseFloat(data.frame);
-                if (frameTime > 0) {
-                    const predictedFps = 1000 / frameTime;
-                    document.getElementById('predicted-fps').textContent = `(~${Math.round(predictedFps)} FPS)`;
-                } else {
-                    document.getElementById('predicted-fps').textContent = '';
-                }
-                document.getElementById('sim-time').textContent = data.sim;
-                document.getElementById('render-time').textContent = data.render;
-                document.getElementById('encode-time').textContent = data.encode;
-                document.getElementById('emit-time').textContent = data.emit;
-                document.getElementById('wait-time').textContent = data.wait;
-                document.getElementById('other-time').textContent = data.other;
-            });
-
-            // (The rest of the script remains the same)
-            document.querySelectorAll('input[type="range"]').forEach(slider => {
-                const valueInput = document.getElementById(`${slider.id}-value`);
-                const syncSliderToInput = () => { valueInput.value = (slider.id === 'history-length' && parseInt(slider.value) >= 1001) ? "Infinite" : slider.value; };
-                const syncInputToSlider = () => { slider.value = (valueInput.type === 'text' && valueInput.value.toLowerCase() === 'infinite') ? 1001 : valueInput.value; };
-                slider.addEventListener('input', syncSliderToInput);
-                valueInput.addEventListener('change', () => { syncInputToSlider(); sendParamsToServer(); });
-                slider.addEventListener('change', sendParamsToServer);
-                syncSliderToInput();
-            });
-            document.querySelectorAll('select, input[type="number"]').forEach(el => { el.addEventListener('change', sendParamsToServer); });
-            function updateBankUI() { document.getElementById('bank-value-label').textContent = (document.getElementById('bank-condition').value === 'random') ? 'Initial Bank (Random Scale)' : 'Initial Bank (Constant Value)';}
-            document.getElementById('bank-condition').addEventListener('change', () => { if (document.getElementById('bank-condition').value === 'random' && parseFloat(document.getElementById('bank-value-input').value) === 0) { document.getElementById('bank-value-input').value = 10;} updateBankUI(); sendParamsToServer(); });
-            updateBankUI();
-            document.getElementById('network-type').addEventListener('change', sendParamsToServer);
-
+                // Keyboard shortcuts
+                window.addEventListener('keydown', (e) => {
+                    if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'select') return;
+                    if (e.code === 'Space') { e.preventDefault(); document.getElementById('start-pause-btn').click(); }
+                    else if (e.code === 'ArrowRight') { e.preventDefault(); document.getElementById('step-btn').click(); }
+                    else if (e.code.toLowerCase() === 'keyr') { e.preventDefault(); document.getElementById('reset-btn').click(); }
+                });
+            }
+            
             function updateButtonState() {
                 const startPauseBtn = document.getElementById('start-pause-btn');
                 const statusText = document.getElementById('status-text');
@@ -347,49 +395,35 @@
                     statusText.classList.replace('text-green-600', 'text-orange-500');
                 }
             }
-            document.getElementById('start-pause-btn').addEventListener('click', () => { isRunning = !isRunning; if (isRunning) { socket.emit('start_simulation'); } else { socket.emit('pause_simulation'); } updateButtonState(); });
-            document.getElementById('reset-btn').addEventListener('click', () => {
-                isRunning = false;
-                frameCount = 0;
-                document.getElementById('frame-counter').textContent = 0;
-                socket.emit('reset_simulation');
-                updateButtonState();
-            });
-            document.getElementById('step-btn').addEventListener('click', () => { if (isRunning) return; socket.emit('step_simulation'); });
-            document.getElementById('save-frame-btn').addEventListener('click', () => socket.emit('save_frame'));
-            document.getElementById('record-btn').addEventListener('click', () => {
-                const recordBtn = document.getElementById('record-btn');
-                isRecording = !isRecording;
-                if (isRecording) {
-                    socket.emit('start_recording');
-                    recordBtn.textContent = 'Stop';
-                    recordBtn.classList.replace('bg-blue-500', 'bg-red-500');
-                    document.getElementById('recording-indicator').classList.remove('hidden');
-                    document.getElementById('download-btn').classList.add('opacity-50', 'cursor-not-allowed');
+
+            function updateSyncButtonUI() {
+                const syncBtn = document.getElementById('sync-mode-btn');
+                if (isSynchronized) {
+                    syncBtn.textContent = 'Enabled';
+                    syncBtn.classList.replace('bg-gray-200', 'bg-red-400');
+                    syncBtn.classList.replace('hover:bg-gray-300', 'hover:bg-red-500');
+                    syncBtn.classList.add('text-white');
                 } else {
-                    socket.emit('stop_recording');
-                    recordBtn.textContent = 'Processing...';
-                    recordBtn.disabled = true;
-                    document.getElementById('recording-indicator').classList.add('hidden');
+                    syncBtn.textContent = 'Disabled';
+                    syncBtn.classList.replace('bg-red-400', 'bg-gray-200');
+                    syncBtn.classList.replace('hover:bg-red-500', 'hover:bg-gray-300');
+                    syncBtn.classList.remove('text-white');
                 }
-            });
-            function triggerDownload(url, filename) { const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
-            socket.on('frame_saved', (data) => { if (data.url) triggerDownload(data.url, data.filename); });
-            socket.on('recording_ready', (data) => {
-                const recordBtn = document.getElementById('record-btn');
-                const downloadBtn = document.getElementById('download-btn');
-                recordBtn.textContent = 'Record Video';
-                recordBtn.disabled = false;
-                recordBtn.classList.replace('bg-red-500', 'bg-blue-500');
-                if (data.url) {
-                    downloadBtn.href = data.url;
-                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    downloadBtn.onclick = () => triggerDownload(data.url, data.filename);
-                }
-            });
-            window.addEventListener('keydown', (e) => { if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'select') return; if (e.code === 'Space') { e.preventDefault(); document.getElementById('start-pause-btn').click(); } else if (e.code === 'ArrowRight') { e.preventDefault(); document.getElementById('step-btn').click(); } else if (e.code.toLowerCase() === 'keyr') { e.preventDefault(); document.getElementById('reset-btn').click(); } });
+            }
+
+            function triggerDownload(url, filename) { 
+                const a = document.createElement('a'); 
+                a.href = url; a.download = filename; 
+                document.body.appendChild(a); 
+                a.click(); 
+                document.body.removeChild(a); 
+            }
+
+            // Initial UI setup
+            setupEventListeners();
+            updateButtonState();
+            updateSyncButtonUI();
         });
     </script>
 </body>
 </html>
-
