@@ -19,29 +19,24 @@ class SimulationVisualizer:
         """Clears the image buffer."""
         self.image_gpu.fill(0)
 
+    def record_kymograph_history(self, agent_strategies, agent_bank_values, time_step):
+        """Records a single line of history for 1D kymograph simulations."""
+        new_colors = self._agents_to_colors(agent_strategies, agent_bank_values)
+        if time_step < self.HEIGHT:
+            self.image_gpu[time_step] = new_colors
+        else:
+            # Roll the image up by one pixel and add the new line at the bottom
+            self.image_gpu = cp.roll(self.image_gpu, -1, axis=0)
+            self.image_gpu[-1] = new_colors
+
     def render(self, agent_strategies, agent_bank_values, time_step):
         """
         Renders the current state to the image buffer.
-        
-        Args:
-            agent_strategies (cp.ndarray): One-hot encoded strategies of agents.
-            agent_bank_values (cp.ndarray): Bank values of agents.
-            time_step (int): The current simulation time step (row index for kymograph).
-
-        Returns:
-            cp.ndarray: The rendered image as a CuPy array.
+        For 1D kymographs, this just returns the pre-rendered history.
+        For 2D grids, this generates the image from the current agent state.
         """
-        new_colors = self._agents_to_colors(agent_strategies, agent_bank_values)
-        
-        if self.network_type == 'ring_1d_periodic' or self.network_type == 'ring_1d_hard':
-            # For a 1D ring, time_step corresponds to the row index.
-            if time_step < self.HEIGHT:
-                self.image_gpu[time_step] = new_colors
-            else:
-                self.image_gpu = cp.roll(self.image_gpu, -1, axis=0)
-                self.image_gpu[-1] = new_colors
-        else:
-            # For 2D grids, reshape the colors to the grid dimensions.
+        if 'ring_1d' not in self.network_type:
+            new_colors = self._agents_to_colors(agent_strategies, agent_bank_values)
             self.image_gpu = new_colors.reshape((self.HEIGHT, self.WIDTH, 3))
             
         return self.image_gpu
@@ -69,4 +64,3 @@ class SimulationVisualizer:
             
         modulated_colors = base_colors * brightness[:, cp.newaxis]
         return (cp.clip(modulated_colors, 0, 1) * 255).astype(cp.uint8)
-

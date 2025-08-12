@@ -80,11 +80,14 @@ class Simulation:
 
     def step(self):
         """Advances the simulation by one time step."""
-        # if self.is_finished() and 'ring_1d' in self.network_type:
-             # self.time_step = 0
-             # self.visualizer.reset()
         self.time_step += 1
         self.agent_system.update_physics()
+
+        # If it's a 1D kymograph, record history on every step.
+        if 'ring_1d' in self.network_type:
+            strategies = self.agent_system.agent_strategies
+            bank_values = self.agent_system.agent_bank_values
+            self.visualizer.record_kymograph_history(strategies, bank_values, self.time_step)
 
     def render(self):
         """Renders the current state using the agent's bank value."""
@@ -101,4 +104,3 @@ class Simulation:
         return (new_params.get('networkType') != self.network_type or
                 new_params.get('numAgents') != self.params['numAgents'] or
                 new_params.get('kymoAspect') != self.params.get('kymoAspect'))
-
