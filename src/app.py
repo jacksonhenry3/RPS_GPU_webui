@@ -202,12 +202,41 @@ def render_loop():
 
     log_server("Render loop stopped.")
 
+def process_recording(proxy_prefix=''):
+    log_server(f"🎬 Starting video processing for {len(sim_state['recorded_frames'])} frames...")
+    if not sim_state['recorded_frames']:
+        log_error("No frames to process for recording.")
+        socketio.emit('recording_ready', {'url': None, 'error': 'No frames were recorded.'})
+        return
+
+    filename = _generate_filename(rps_sim.params, 'mp4')
+    filepath = os.path.join(temp_dir.name, filename)
+
+    try:
+        with imageio.get_writer(filepath, fps=30, macro_block_size=1) as writer:
+            for frame_bytes in sim_state['recorded_frames']:
+                writer.append_data(imageio.imread(frame_bytes))
+
+        sim_state['recorded_frames'].clear()
+        download_url = f"{proxy_prefix}/download/{filename}"
+        log_server(f"✅ Video ready for download: {filename}")
+        socketio.emit('recording_ready', {'url': download_url, 'filename': filename})
+    except Exception as e:
+        log_error(f"Error processing video: {e}")
+        socketio.emit('recording_ready', {'url': None, 'error': str(e)})
+
 # --- Socket.IO Handlers ---
 @socketio.on('set_sync_mode')
 def set_sync_mode(data):
     is_sync = data.get('is_synchronized', False)
     sim_state['is_synchronized'] = is_sync
     log_server(f"Synchronization mode set to: {is_sync}")
+
+    # To prevent any race conditions or deadlocks, we simply restart the
+    # simulation threads when the mode is changed while running.
+    if sim_state['is_running']:
+        stop_simulation_threads()
+        handle_start()
 
 @socketio.on('client_ready_for_next_frame')
 def handle_client_ready():
