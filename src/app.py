@@ -208,9 +208,6 @@ def set_sync_mode(data):
     is_sync = data.get('is_synchronized', False)
     sim_state['is_synchronized'] = is_sync
     log_server(f"Synchronization mode set to: {is_sync}")
-    if is_sync:
-        if not sim_state['sync_event_render_ready'].ready():
-            sim_state['sync_event_render_ready'].send()
 
 @socketio.on('client_ready_for_next_frame')
 def handle_client_ready():
@@ -221,6 +218,16 @@ def handle_client_ready():
 def handle_start():
     if not sim_state['is_running']:
         log_server("Start command received. Starting simulation threads.")
+
+        # Reset all events to a clean, known state before starting the loops.
+        sim_state['client_ready'] = Event()
+        sim_state['sync_event_sim_done'] = Event()
+        sim_state['sync_event_render_ready'] = Event()
+        
+        # Manually trigger the client_ready event to kick off the render_loop,
+        # since the client is already connected and won't send a new ready signal.
+        sim_state['client_ready'].send()
+
         sim_state['is_running'] = True
         sim_state['perf']['sim_steps_ps'] = 0
         sim_state['perf']['render_fps'] = 0
