@@ -4,7 +4,7 @@
 
 1. **Request a GPU node:**
    ```sh
-   sinteractive --gres=gpu:1
+   sinteractive
    ```
 
 2. **Load required modules:**
