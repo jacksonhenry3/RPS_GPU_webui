@@ -88,10 +88,6 @@
                             <button id="reset-btn" class="flex-1 bg-red-400 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg opacity-80 hover:opacity-100">Reset</button>
                             <button id="step-btn" class="flex-1 bg-stone-400 hover:bg-stone-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Step</button>
                         </div>
-                        <div>
-                            <label for="render-speed" class="flex justify-between items-center text-sm"><span>Sim Steps per Frame</span><input type="number" id="render-speed-value" step="1" class="param-input font-mono text-gray-600"></label>
-                            <input id="render-speed" type="range" min="1" max="100" value="1" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer control-slider">
-                        </div>
                     </div>
                 </div>
                 <div class="panel p-4">
@@ -287,7 +283,6 @@
                     tie: parseFloat(document.getElementById('tie-payoff').value),
                     loss: parseFloat(document.getElementById('loss-payoff').value),
                     kT: parseFloat(document.getElementById('kt-param').value),
-                    renderSpeed: parseInt(document.getElementById('render-speed').value),
                     networkType: document.getElementById('network-type').value,
                     initialCondition: document.getElementById('initial-condition').value,
                     selectionMode: document.getElementById('selection-mode').value,
@@ -318,7 +313,7 @@
                 const standaloneControls = [
                     'network-type', 'initial-condition', 'selection-mode', 'score-calculation-mode',
                     'bank-condition', 'bank-value-input', 'num-agents', 'render-resolution', 'kymo-aspect',
-                    'render-speed-value', 'jpeg-quality-value', 'win-payoff-value', 'tie-payoff-value', 'loss-payoff-value', 'kt-param-value'
+                    'jpeg-quality-value', 'win-payoff-value', 'tie-payoff-value', 'loss-payoff-value', 'kt-param-value'
                 ];
                 standaloneControls.forEach(id => {
                     const el = document.getElementById(id);

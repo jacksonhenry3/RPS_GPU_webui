@@ -14,7 +14,7 @@ class Simulation:
     def __init__(self):
         self.params = self._get_default_params()
         self.time_step = 0
-        self.steps_per_frame = self.params['renderSpeed']
+        self.steps_per_frame = 1
         self.strategy_history = []
         self.neighbor_history = []
         self.agent_system = None
@@ -30,7 +30,6 @@ class Simulation:
             'scoreCalculationMode': 'total',
             'win': 2.0, 'tie': 1.5, 'loss': 0.0, 'kT': 100.0,
             'historyLength': 1_000_001,
-            'renderSpeed': 1,
             'renderResolution': 256,
             'jpegQuality': 80,
             'kymoAspect': 3.0
@@ -56,7 +55,6 @@ class Simulation:
 
     def update_parameters(self, params):
         self.params.update(params)
-        self.steps_per_frame = self.params['renderSpeed']
         if self.params['historyLength'] > 1000:
             self.agent_system.history_length = 1_000_001
         else:
