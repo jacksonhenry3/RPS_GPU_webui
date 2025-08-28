@@ -74,6 +74,12 @@ class Simulation:
             bank_value=self.params['bankValue']
         )
         log_sim(f"State reset to '{self.params['initialCondition']}' strategies and '{self.params['bankCondition']}' bank values.")
+        if "1d" in self.params['networkType']:
+            self.visualizer.record_kymograph_history(
+                self.agent_system.agent_strategies,
+                self.agent_system.agent_bank_values,
+                0
+            )
         self.render()
 
     def step(self):
