@@ -91,8 +91,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <button id="record-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Record Video</button>
                             <button id="save-frame-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Save Frame</button>
-                            <a id="download-btn" class="col-span-2 bg-gray-400 text-white font-bold py-2 px-4 rounded-full shadow-md text-center cursor-not-allowed opacity-50">Download Video</a>
-                       </div>
+                        </div>
                     </div>
                 </div>
                 <div class="panel p-4">
@@ -218,6 +217,8 @@
             let isRunning = false;
             let isRecording = false;
             let isSynchronized = false;
+            let downloadUrl = null;
+            let downloadFilename = null;
 
             // --- Socket Event Handlers ---
             socket.on('connect', () => {
@@ -258,14 +259,12 @@
             
             socket.on('recording_ready', (data) => {
                 const recordBtn = document.getElementById('record-btn');
-                const downloadBtn = document.getElementById('download-btn');
-                recordBtn.textContent = 'Record Video';
+                recordBtn.textContent = 'Download Video';
                 recordBtn.disabled = false;
-                recordBtn.classList.replace('bg-red-500', 'bg-blue-500');
+                recordBtn.classList.replace('bg-red-500', 'bg-green-500');
                 if (data.url) {
-                    downloadBtn.href = data.url;
-                    downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    downloadBtn.onclick = () => triggerDownload(data.url, data.filename);
+                    downloadUrl = data.url;
+                    downloadFilename = data.filename;
                 }
             });
 
@@ -343,16 +342,26 @@
                 });
 
                 // Capture buttons
-                document.getElementById('save-frame-btn').addEventListener('click', () => socket.emit('save_frame'));
                 document.getElementById('record-btn').addEventListener('click', () => {
                     const recordBtn = document.getElementById('record-btn');
+                    if (downloadUrl) {
+                        triggerDownload(downloadUrl, downloadFilename);
+                        downloadUrl = null;
+                        downloadFilename = null;
+                        
+                        recordBtn.textContent = 'Record Video';
+                        recordBtn.disabled = false;
+                        recordBtn.classList.replace('bg-green-500', 'bg-blue-500');
+                        isRecording = false;
+                        return;
+                    }
+
                     isRecording = !isRecording;
                     if (isRecording) {
                         socket.emit('start_recording');
                         recordBtn.textContent = 'Stop';
                         recordBtn.classList.replace('bg-blue-500', 'bg-red-500');
                         document.getElementById('recording-indicator').classList.remove('hidden');
-                        document.getElementById('download-btn').classList.add('opacity-50', 'cursor-not-allowed');
                     } else {
                         socket.emit('stop_recording');
                         recordBtn.textContent = 'Processing...';
@@ -408,7 +417,7 @@
                 a.href = url; a.download = filename; 
                 document.body.appendChild(a); 
                 a.click(); 
-                document.body.removeChild(a); 
+                document.body.removeChild(a);
             }
 
             // Initial UI setup
