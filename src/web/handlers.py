@@ -3,6 +3,8 @@ from flask import request
 from eventlet.event import Event
 from nvidia import nvimgcodec
 
+import cupy as cp
+
 from app_utils import log_server, log_separator
 from web.threads import (
     simulation_loop,
@@ -132,7 +134,11 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         if not sim_state['is_recording']:
             log_server("🔴 Recording started.")
             sim_state['is_recording'] = True
-            sim_state['recorded_frames'] = []
+
+            nv_image = nvimgcodec.as_image(rps_sim.visualizer.image_gpu.astype(cp.uint8))
+            jpeg_bytes = nvimgcodec_encoder.encode(nv_image, "jpeg", params=nvimgcodec.EncodeParams(quality=98))
+
+            sim_state['recorded_frames'] = [jpeg_bytes]
             sim_state['proxy_prefix'] = request.environ.get('SCRIPT_NAME', '')
 
     @socketio.on('stop_recording')
