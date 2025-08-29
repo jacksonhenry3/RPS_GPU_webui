@@ -23,11 +23,13 @@ def _generate_filename(params, extension):
     return f"net-{net}_s-{size}_kT-{kt:.1f}_hist-{hist}_p-{win}-{tie}-{loss}_{uuid.uuid4().hex[:6]}.{extension}"
 
 
+# The function signature remains the same as your original
 def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
     timings = {}
     image_array_gpu = sim_instance.visualizer.image_gpu
     target_width = sim_instance.params.get('renderResolution', 256)
-    quality = sim_instance.params.get('jpegQuality', 99)
+    # The 'jpegQuality' parameter is no longer used for lossless PNG
+    # quality = sim_instance.params.get('jpegQuality', 99) 
     original_height, original_width, _ = image_array_gpu.shape
 
     scale_start = time.time()
@@ -38,16 +40,24 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
 
     encode_start = time.time()
     nv_image = nvimgcodec.as_image(image_array_gpu.astype(cp.uint8))
-    jpeg_bytes = nvimgcodec_encoder.encode(nv_image, "jpeg", params=nvimgcodec.EncodeParams(quality=quality))
+    
+    # --- KEY CHANGE: Encode to PNG instead of JPEG ---
+    # PNG is a lossless format, so it will perfectly preserve your 3 colors.
+    # No encoding parameters like 'quality' are needed.
+    png_bytes = nvimgcodec_encoder.encode(nv_image, "png")
+    
     timings['encode'] = time.time() - encode_start
 
     if sim_state['is_recording']:
-        sim_state['recorded_frames'].append(jpeg_bytes)
+        # Store the lossless PNG bytes for video creation
+        sim_state['recorded_frames'].append(png_bytes)
 
     emit_start_time = time.time()
-    socketio.emit('new_frame', jpeg_bytes)
+    # Emit the PNG bytes; all modern browsers support PNG natively
+    socketio.emit('new_frame', png_bytes)
     socketio.emit('frame_number_update', {'frame_number': sim_instance.time_step})
     timings['emit'] = time.time() - emit_start_time
+    
     return timings
 
 
@@ -152,25 +162,34 @@ def render_loop(socketio, rps_sim, sim_state, nvimgcodec_encoder):
     log_server("Render loop stopped.")
 
 
+
 def process_recording(socketio, rps_sim, sim_state, temp_dir, proxy_prefix=''):
-    log_server(f"🎬 Starting video processing for {len(sim_state['recorded_frames'])} frames...")
+    """
+    Processes recorded frames and saves them as an animated GIF.
+    """
+    log_server(f"🎬 Starting GIF processing for {len(sim_state['recorded_frames'])} frames...")
     if not sim_state['recorded_frames']:
         log_error("No frames to process for recording.")
         socketio.emit('recording_ready', {'url': None, 'error': 'No frames were recorded.'})
         return
 
-    filename = _generate_filename(rps_sim.params, 'mp4')
+    # Change the filename extension from 'mp4' to 'gif'
+    filename = _generate_filename(rps_sim.params, 'gif')
     filepath = os.path.join(temp_dir.name, filename)
 
     try:
-        with imageio.get_writer(filepath, fps=30, macro_block_size=1) as writer:
+        # Use imageio's GIF writer. Parameters are simpler than for video.
+        # 'mode=I' processes each frame individually. 'loop=0' creates an infinite loop.
+        with imageio.get_writer(filepath, mode='I', fps=15, loop=0) as writer:
             for frame_bytes in sim_state['recorded_frames']:
+                # imageio.imread can decode the in-memory PNG bytes
                 writer.append_data(imageio.imread(frame_bytes))
-
+        
         sim_state['recorded_frames'].clear()
         download_url = f"{proxy_prefix}/download/{filename}"
-        log_server(f"✅ Video ready for download: {filename}")
+        log_server(f"✅ GIF ready for download: {filename}")
         socketio.emit('recording_ready', {'url': download_url, 'filename': filename})
+        
     except Exception as e:
-        log_error(f"Error processing video: {e}")
+        log_error(f"Error processing GIF: {e}")
         socketio.emit('recording_ready', {'url': None, 'error': str(e)})
