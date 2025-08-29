@@ -142,8 +142,8 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
             log_server("🔴 Recording started.")
             sim_state['is_recording'] = True
             nv_image = nvimgcodec.as_image(rps_sim.visualizer.image_gpu.astype(cp.uint8))
-            jpeg_bytes = nvimgcodec_encoder.encode(nv_image, "jpeg", params=nvimgcodec.EncodeParams(quality=98))
-            sim_state['recorded_frames'] = [jpeg_bytes]
+            png_bytes = nvimgcodec_encoder.encode(nv_image, "png")
+            sim_state['recorded_frames'] = [png_bytes]
             sim_state['proxy_prefix'] = request.environ.get('SCRIPT_NAME', '')
 
     @socketio.on('stop_recording')

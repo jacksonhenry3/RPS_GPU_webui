@@ -28,8 +28,6 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
     timings = {}
     image_array_gpu = sim_instance.visualizer.image_gpu
     target_width = sim_instance.params.get('renderResolution', 128)
-    # The 'jpegQuality' parameter is no longer used for lossless PNG
-    # quality = sim_instance.params.get('jpegQuality', 99) 
     original_height, original_width, _ = image_array_gpu.shape
 
     scale_start = time.time()
@@ -44,7 +42,6 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
     encode_start = time.time()
     nv_image = nvimgcodec.as_image(image_array_gpu.astype(cp.uint8))
     
-    # --- KEY CHANGE: Encode to PNG instead of JPEG ---
     png_bytes = nvimgcodec_encoder.encode(nv_image, "png")
     
     timings['encode'] = time.time() - encode_start

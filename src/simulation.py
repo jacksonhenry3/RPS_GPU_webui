@@ -31,7 +31,6 @@ class Simulation:
             'win': 2.0, 'tie': 1.5, 'loss': 0.0, 'kT': 100.0,
             'historyLength': 1_000_001,
             'renderResolution': 128,
-            'jpegQuality': 80,
             'kymoAspect': 3.0
         }
 
