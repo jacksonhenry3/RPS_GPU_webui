@@ -27,23 +27,24 @@ def _generate_filename(params, extension):
 def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
     timings = {}
     image_array_gpu = sim_instance.visualizer.image_gpu
-    target_width = sim_instance.params.get('renderResolution', 256)
+    target_width = sim_instance.params.get('renderResolution', 128)
     # The 'jpegQuality' parameter is no longer used for lossless PNG
     # quality = sim_instance.params.get('jpegQuality', 99) 
     original_height, original_width, _ = image_array_gpu.shape
 
     scale_start = time.time()
     if original_width != target_width:
-        scale_factor = target_width / original_width
-        image_array_gpu = zoom(image_array_gpu, (scale_factor, scale_factor, 1), order=0)
+        # scale_factor = target_width / original_width
+        # image_array_gpu = zoom(image_array_gpu, (scale_factor, scale_factor, 1), order=0)
+        scale_factor = int(original_width / target_width)
+        # print(scale_factor,original_width,target_width)
+        image_array_gpu = image_array_gpu[::scale_factor, ::scale_factor, :].copy()
     timings['scale'] = time.time() - scale_start
 
     encode_start = time.time()
     nv_image = nvimgcodec.as_image(image_array_gpu.astype(cp.uint8))
     
     # --- KEY CHANGE: Encode to PNG instead of JPEG ---
-    # PNG is a lossless format, so it will perfectly preserve your 3 colors.
-    # No encoding parameters like 'quality' are needed.
     png_bytes = nvimgcodec_encoder.encode(nv_image, "png")
     
     timings['encode'] = time.time() - encode_start
