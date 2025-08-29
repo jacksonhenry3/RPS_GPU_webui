@@ -118,14 +118,21 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
     @socketio.on('save_frame')
     def handle_save_frame():
         log_server("Save Frame command received.")
-        filename = _generate_filename(rps_sim.params, 'jpg')
+        filename = _generate_filename(rps_sim.params, 'png')
         filepath = os.path.join(temp_dir.name, filename)
         image_array_gpu = rps_sim.visualizer.image_gpu
         nv_image = nvimgcodec.as_image(image_array_gpu)
-        jpeg_bytes = nvimgcodec_encoder.encode(nv_image, "jpeg", params=nvimgcodec.EncodeParams(quality=98))
-        with open(filepath, 'wb') as f: f.write(jpeg_bytes)
-        proxy_prefix = request.environ.get('SCRIPT_NAME', '')
+        png_bytes = nvimgcodec_encoder.encode(nv_image, "png")
+        with open(filepath, 'wb') as f: f.write(png_bytes)
+        hostname = os.environ.get('HOSTNAME')
+        if hostname and (hostname.startswith('gpu-') or '.' in hostname):
+            full_hostname = f"{hostname}.cm.cluster" if '.' not in hostname else hostname
+            proxy_prefix = f"/node/{full_hostname}/{os.environ.get('PORT', PORT)}"
+        else:
+            proxy_prefix = f'http://localhost:{os.environ['PORT']}'
+        
         download_url = f"{proxy_prefix}/download/{filename}"
+        print(download_url)
         log_server(f"✅ Frame saved for download: {filename}")
         socketio.emit('frame_saved', {'url': download_url, 'filename': filename})
 
