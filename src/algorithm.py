@@ -16,7 +16,6 @@ class AgentSystem:
         self.grid_dim = grid_dim
         self.precision = precision
         self.beta = 0.01
-        self.history_length = 1000
         self.payoff_matrix = cp.zeros((3, 3), dtype=self.precision)
         self.agent_strategies = cp.zeros((3, N), dtype=int)
         self.agent_bank_values = cp.zeros(N, dtype=self.precision)
@@ -94,8 +93,7 @@ class AgentSystem:
         neighbor_counts = self.adjacency_matrix.dot(self.agent_strategies.T).T
         potential_payoffs = self.payoff_matrix.dot(neighbor_counts)
         total_payoffs = cp.sum(potential_payoffs * self.agent_strategies, axis=0)
-        decay_factor = 1.0 - (1.0 / self.history_length)
-        self.agent_bank_values = self.agent_bank_values * decay_factor + total_payoffs
+        self.agent_bank_values = self.agent_bank_values + total_payoffs
 
     def choose_new_strats_local_choice(self):
         neigh_bank = self._calculate_neighborhood_scores()

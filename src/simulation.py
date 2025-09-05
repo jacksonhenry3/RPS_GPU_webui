@@ -54,10 +54,6 @@ class Simulation:
 
     def update_parameters(self, params):
         self.params.update(params)
-        if self.params['historyLength'] > 1000:
-            self.agent_system.history_length = 1_000_001
-        else:
-            self.agent_system.history_length = self.params['historyLength']
         self.agent_system.update_params(self.params)
         log_sim(f"Params Updated: kT={self.params['kT']:.1f}, mode='{self.params['selectionMode']}', score='{self.params['scoreCalculationMode']}'")
 
