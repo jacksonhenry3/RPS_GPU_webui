@@ -1,4 +1,5 @@
 import cupy as cp
+import initial_conditions
 
 # Define precision for the simulation
 precision = cp.float64
@@ -178,7 +179,7 @@ class AgentSystem:
         probs = exp_payoff / (cp.sum(exp_payoff, axis=0, keepdims=True) + 1e-9)
         r = cp.random.rand(self.N).astype(self.precision)
         chosen = cp.argmax(r < cp.cumsum(probs, axis=0), axis=0)
-        self.agent_strategies = self._labels_to_one_hot(chosen)
+        self.agent_strategies = initial_conditions._labels_to_one_hot(chosen, self.N)
 
     def choose_new_strats_random(self):
         neigh_bank = self._calculate_neighborhood_scores()
@@ -188,7 +189,7 @@ class AgentSystem:
         probs = exp_payoff / (cp.sum(exp_payoff, axis=0, keepdims=True) + 1e-9)
         r = cp.random.rand(self.N).astype(self.precision)
         chosen = cp.argmax(r < cp.cumsum(probs, axis=0), axis=0)
-        self.agent_strategies = self._labels_to_one_hot(chosen)
+        self.agent_strategies = initial_conditions._labels_to_one_hot(chosen, self.N)
     
     def choose_new_strats_deterministic(self):
         neigh_bank = self._calculate_neighborhood_scores()
@@ -204,55 +205,15 @@ class AgentSystem:
         current_choice = cp.argmax(self.agent_strategies, axis=0)
         #change to is_tie for max/min tie, any_tie for any tie
         chosen = cp.where(any_tie, current_choice, best_choice)
-        self.agent_strategies = self._labels_to_one_hot(chosen)
-
-    def _labels_to_one_hot(self, labels):
-        return cp.eye(3, dtype=int)[labels].T
+        self.agent_strategies = initial_conditions._labels_to_one_hot(chosen, self.N)
 
     def _initialize_strategies(self, condition='random'):
         conditions = {
-            'all_rock': lambda: self._all_one_strategy(0),
-            'vertical_stripes': lambda: self._vertical_stripes(3),
-            'pie_slices': self._pie_slices,
-            'single_invader': self._single_invader,
-            'split': self._split_strategies,
-            'random': self._random_strategies
+            'all_rock': lambda: initial_conditions._all_one_strategy(self.N, 0),
+            'vertical_stripes': lambda: initial_conditions._vertical_stripes(self.N, self.grid_dim, 3),
+            'pie_slices': lambda: initial_conditions._pie_slices(self.N, self.grid_dim),
+            'single_invader': lambda: initial_conditions._single_invader(self.N, self.grid_dim),
+            'split': lambda: initial_conditions._split_strategies(self.N),
+            'random': lambda: initial_conditions._random_strategies(self.N)
         }
-        self.agent_strategies = conditions.get(condition, self._random_strategies)()
-
-    def _random_strategies(self):
-        return self._labels_to_one_hot(cp.random.randint(0, 3, size=self.N))
-
-    def _all_one_strategy(self, strategy_index=0):
-        return self._labels_to_one_hot(cp.full(self.N, strategy_index, dtype=int))
-
-    def _split_strategies(self):
-        labels = cp.zeros(self.N, dtype=int)
-        labels[self.N // 2:] = 1
-        return self._labels_to_one_hot(labels)
-
-    def _single_invader(self):
-        labels = cp.zeros(self.N, dtype=int)
-        center_index = (self.grid_dim[0] // 2) * self.grid_dim[1] + (self.grid_dim[1] // 2) if self.grid_dim else self.N // 2
-        labels[center_index] = 1
-        return self._labels_to_one_hot(labels)
-
-    def _vertical_stripes(self, num_stripes=3):
-        width = self.grid_dim[1] if self.grid_dim else self.N
-        indices = cp.arange(self.N) % width
-        stripe_width = width // num_stripes
-        labels = cp.zeros(self.N, dtype=int)
-        for i in range(num_stripes):
-            mask = (indices >= i * stripe_width) & (indices < (i + 1) * stripe_width)
-            labels[mask] = i % 3
-        return self._labels_to_one_hot(labels)
-
-    def _pie_slices(self):
-        if not self.grid_dim: return self._random_strategies()
-        rows, cols = self.grid_dim
-        y, x = cp.meshgrid(cp.arange(rows), cp.arange(cols))
-        angles = cp.arctan2(y - rows / 2, x - cols / 2) * 180 / cp.pi
-        labels = cp.zeros((rows, cols), dtype=int)
-        labels[(angles >= 60)] = 1
-        labels[(angles <= -60)] = 2
-        return self._labels_to_one_hot(labels.flatten())
+        self.agent_strategies = conditions.get(condition, lambda: initial_conditions._random_strategies(self.N))()
