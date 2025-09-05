@@ -127,9 +127,12 @@ class AgentSystem:
         max_scores = cp.max(masked_neigh_bank, axis=0)
         min_scores = cp.min(cp.where(is_available, neigh_bank, cp.inf), axis=0)
         is_tie = (max_scores == min_scores)
+        # If there is any tie along axis zero, not just max and min
+        any_tie  = cp.sum( (masked_neigh_bank == max_scores), axis=0) > 1
         best_choice = cp.argmax(masked_neigh_bank, axis=0)
         current_choice = cp.argmax(self.agent_strategies, axis=0)
-        chosen = cp.where(is_tie, current_choice, best_choice)
+        #change to is_tie for max/min tie, any_tie for any tie
+        chosen = cp.where(any_tie, current_choice, best_choice)
         self.agent_strategies = self._labels_to_one_hot(chosen)
 
     def _labels_to_one_hot(self, labels):
