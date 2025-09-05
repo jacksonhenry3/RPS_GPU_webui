@@ -10,6 +10,7 @@ from eventlet.event import Event
 from nvidia import nvimgcodec
 
 from app_utils import log_error, log_server
+import measurements
 
 
 # --- Helper Functions ---
@@ -72,15 +73,15 @@ def simulation_loop(socketio, rps_sim, sim_state):
                 if not sim_state.is_running: break
                 rps_sim.step()
                 if sim_state.is_plotting:
-                    sim_state.history_pop.append(rps_sim.agent_system.get_population_distribution())
-                    sim_state.history_entropy.append(rps_sim.agent_system.get_entropy())
+                    sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
+                    sim_state.history_entropy.append(measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim))
 
             sim_state.sync_event_sim_done.send()
         else:
             rps_sim.step()
             if sim_state.is_plotting:
-                sim_state.history_pop.append(rps_sim.agent_system.get_population_distribution())
-                sim_state.history_entropy.append(rps_sim.agent_system.get_entropy())
+                sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
+                sim_state.history_entropy.append(measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim))
             steps_since_last_update += 1
             current_time = time.time()
             delta_time = current_time - last_update_time
