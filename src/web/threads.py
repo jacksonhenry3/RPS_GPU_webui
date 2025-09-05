@@ -27,16 +27,11 @@ def _generate_filename(params, extension):
 def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
     timings = {}
     image_array_gpu = sim_instance.visualizer.image_gpu
-    target_width = sim_instance.params.get('renderResolution', 128)
-    original_height, original_width, _ = image_array_gpu.shape
+    render_ratio = sim_instance.params.get('renderRatio', 1.0)
 
     scale_start = time.time()
-    if original_width != target_width:
-        # scale_factor = target_width / original_width
-        # image_array_gpu = zoom(image_array_gpu, (scale_factor, scale_factor, 1), order=0)
-        scale_factor = int(original_width / target_width)
-        # print(scale_factor,original_width,target_width)
-        image_array_gpu = image_array_gpu[::scale_factor, ::scale_factor, :].copy()
+    if abs(render_ratio - 1.0) > 1e-6:
+        image_array_gpu = zoom(image_array_gpu, (render_ratio, render_ratio, 1), order=0)
     timings['scale'] = time.time() - scale_start
 
     encode_start = time.time()

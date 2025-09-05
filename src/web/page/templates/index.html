@@ -99,8 +99,8 @@
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label for="render-resolution" class="block text-sm mb-1">Output Width (px)</label>
-                                <input type="number" id="render-resolution" value="128" step="16" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                <label for="render-ratio" class="block text-sm mb-1">Output Width Ratio</label>
+                                <input type="number" id="render-ratio" value="1.0" step="0.1" min="0.1" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
                             </div>
                             <div>
                                 <label for="kymo-aspect" class="block text-sm mb-1">Kymo Aspect</label>
@@ -284,7 +284,7 @@
                     bankCondition: document.getElementById('bank-condition').value,
                     bankValue: parseFloat(document.getElementById('bank-value-input').value),
                     numAgents: parseInt(document.getElementById('num-agents').value),
-                    renderResolution: parseInt(document.getElementById('render-resolution').value),
+                    renderRatio: parseFloat(document.getElementById('render-ratio').value),
                     
                     kymoAspect: parseFloat(document.getElementById('kymo-aspect').value)
                 };
@@ -300,12 +300,16 @@
                     const syncInputToSlider = () => { slider.value = (valueInput.type === 'text' && valueInput.value.toLowerCase() === 'infinite') ? 1001 : valueInput.value; };
                     slider.addEventListener('input', syncSliderToInput);
                     valueInput.addEventListener('change', () => { syncInputToSlider(); sendParamsToServer(); });
-                    slider.addEventListener('change', sendParamsToServer);
+                    if (slider.id === 'kt-param') {
+                        slider.addEventListener('input', sendParamsToServer);
+                    } else {
+                        slider.addEventListener('change', sendParamsToServer);
+                    }
                     syncSliderToInput();
                 });
                 const standaloneControls = [
                     'network-type', 'initial-condition', 'selection-mode', 'score-calculation-mode',
-                    'bank-condition', 'bank-value-input', 'num-agents', 'render-resolution', 'kymo-aspect',
+                    'bank-condition', 'bank-value-input', 'num-agents', 'render-ratio', 'kymo-aspect',
                     'win-payoff-value', 'tie-payoff-value', 'loss-payoff-value', 'kt-param-value'
                 ];
                 standaloneControls.forEach(id => {

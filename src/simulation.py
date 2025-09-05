@@ -30,7 +30,7 @@ class Simulation:
             'scoreCalculationMode': 'total',
             'win': 2.0, 'tie': 1.5, 'loss': 0.0, 'kT': 100.0,
             'historyLength': 1_000_001,
-            'renderResolution': 128,
+            'renderRatio': 1.0,
             'kymoAspect': 3.0
         }
 
