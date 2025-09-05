@@ -56,3 +56,7 @@ def index():
 @app.route('/download/<filename>')
 def download(filename):
     return send_from_directory(temp_dir.name, filename, as_attachment=True)
+
+@app.route('/plots/<filename>')
+def plots(filename):
+    return send_from_directory(temp_dir.name, filename)

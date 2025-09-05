@@ -41,9 +41,9 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
     
     timings['encode'] = time.time() - encode_start
 
-    if sim_state['is_recording']:
+    if sim_state.is_recording:
         # Store the lossless PNG bytes for video creation
-        sim_state['recorded_frames'].append(png_bytes)
+        sim_state.recorded_frames.append(png_bytes)
 
     emit_start_time = time.time()
     # Emit the PNG bytes; all modern browsers support PNG natively
@@ -57,24 +57,32 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
 # --- Background Threads ---
 def simulation_loop(socketio, rps_sim, sim_state):
     log_server("Starting simulation loop.")
-    perf = sim_state['perf']
+    perf = sim_state.perf
     last_update_time = time.time()
     steps_since_last_update = 0
 
-    while sim_state['is_running']:
-        if sim_state['is_synchronized']:
-            sim_state['sync_event_render_ready'].wait()
-            sim_state['sync_event_render_ready'] = Event()
-            if not sim_state['is_running']: break
+    while sim_state.is_running:
+        if sim_state.is_synchronized:
+            sim_state.sync_event_render_ready.wait()
+            sim_state.sync_event_render_ready = Event()
+            if not sim_state.is_running: break
 
             steps_to_run = rps_sim.steps_per_frame
             for _ in range(steps_to_run):
-                if not sim_state['is_running']: break
+                if not sim_state.is_running: break
                 rps_sim.step()
+                if sim_state.is_plotting:
+                    sim_state.history_pop.append(rps_sim.agent_system.get_population_distribution())
+                    sim_state.history_entropy.append(rps_sim.agent_system.get_entropy())
+                    sim_state.history_appeals.append(rps_sim.agent_system.get_appeal_distribution())
 
-            sim_state['sync_event_sim_done'].send()
+            sim_state.sync_event_sim_done.send()
         else:
             rps_sim.step()
+            if sim_state.is_plotting:
+                sim_state.history_pop.append(rps_sim.agent_system.get_population_distribution())
+                sim_state.history_entropy.append(rps_sim.agent_system.get_entropy())
+                sim_state.history_appeals.append(rps_sim.agent_system.get_appeal_distribution())
             steps_since_last_update += 1
             current_time = time.time()
             delta_time = current_time - last_update_time
@@ -88,7 +96,7 @@ def simulation_loop(socketio, rps_sim, sim_state):
 
 def render_loop(socketio, rps_sim, sim_state, nvimgcodec_encoder):
     log_server("Starting render loop.")
-    perf = sim_state['perf']
+    perf = sim_state.perf
     render_times = deque(maxlen=100)
     scale_times = deque(maxlen=100)
     encode_times = deque(maxlen=100)
@@ -99,20 +107,20 @@ def render_loop(socketio, rps_sim, sim_state, nvimgcodec_encoder):
     last_perf_update = time.time()
     perf_update_frames = 0
 
-    while sim_state['is_running']:
+    while sim_state.is_running:
         loop_start_time = time.time()
 
         wait_start = time.time()
-        sim_state['client_ready'].wait()
-        if not sim_state['is_running']: break
+        sim_state.client_ready.wait()
+        if not sim_state.is_running: break
         wait_time = time.time() - wait_start
-        sim_state['client_ready'] = Event()
+        sim_state.client_ready = Event()
 
-        if sim_state['is_synchronized']:
-            sim_state['sync_event_render_ready'].send()
-            sim_state['sync_event_sim_done'].wait()
-            sim_state['sync_event_sim_done'] = Event()
-            if not sim_state['is_running']: break
+        if sim_state.is_synchronized:
+            sim_state.sync_event_render_ready.send()
+            sim_state.sync_event_sim_done.wait()
+            sim_state.sync_event_sim_done = Event()
+            if not sim_state.is_running: break
 
         render_start = time.time()
         rps_sim.render()
@@ -155,13 +163,12 @@ def render_loop(socketio, rps_sim, sim_state, nvimgcodec_encoder):
     log_server("Render loop stopped.")
 
 
-
 def process_recording(socketio, rps_sim, sim_state, temp_dir, proxy_prefix=''):
     """
     Processes recorded frames and saves them as an animated GIF.
     """
-    log_server(f"🎬 Starting GIF processing for {len(sim_state['recorded_frames'])} frames...")
-    if not sim_state['recorded_frames']:
+    log_server(f"🎬 Starting GIF processing for {len(sim_state.recorded_frames)} frames...")
+    if not sim_state.recorded_frames:
         log_error("No frames to process for recording.")
         socketio.emit('recording_ready', {'url': None, 'error': 'No frames were recorded.'})
         return
@@ -174,11 +181,11 @@ def process_recording(socketio, rps_sim, sim_state, temp_dir, proxy_prefix=''):
         # Use imageio's GIF writer. Parameters are simpler than for video.
         # 'mode=I' processes each frame individually. 'loop=0' creates an infinite loop.
         with imageio.get_writer(filepath, mode='I', fps=15, loop=0) as writer:
-            for frame_bytes in sim_state['recorded_frames']:
+            for frame_bytes in sim_state.recorded_frames:
                 # imageio.imread can decode the in-memory PNG bytes
                 writer.append_data(imageio.imread(frame_bytes))
         
-        sim_state['recorded_frames'].clear()
+        sim_state.recorded_frames.clear()
         download_url = f"{proxy_prefix}/download/{filename}"
         log_server(f"✅ GIF ready for download: {filename}")
         socketio.emit('recording_ready', {'url': download_url, 'filename': filename})

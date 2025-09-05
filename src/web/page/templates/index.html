@@ -75,8 +75,7 @@
                         <div class="flex items-center gap-2"><div class="color-swatch" style="background-color: rgb(148, 103, 189);"></div><span>Scissors</span></div>
                     </div>
                 </div>
-                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner"><img id="strategy-chart" src="" alt="Strategy Population Chart" class="w-full h-auto rounded"/></div>
-                <div class="w-full panel p-2 sm:p-4 bg-stone-50 rounded-lg shadow-inner"><img id="neighbor-chart" src="" alt="Neighbor-Pair Likelihood Chart" class="w-full h-auto rounded"/></div>
+                <div id="plots-container" class="w-full grid grid-cols-1 gap-8"></div>
             </div>
 
             <aside class="xl:col-span-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-6 content-start">
@@ -91,6 +90,9 @@
                         <div class="grid grid-cols-2 gap-3">
                             <button id="record-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Record Video</button>
                             <button id="save-frame-btn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Save Frame</button>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3">
+                            <button id="render-plots-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">Render Plots</button>
                         </div>
                     </div>
                 </div>
@@ -265,6 +267,21 @@
                 if (data.url) triggerDownload(data.url, data.filename); 
             });
 
+            socket.on('request_plot_update', () => {
+                fetch('/render_plots');
+            });
+
+            socket.on('plots_ready', (data) => {
+                const plotsContainer = document.getElementById('plots-container');
+                plotsContainer.innerHTML = ''; // Clear existing plots
+                data.plot_paths.forEach(path => {
+                    const img = document.createElement('img');
+                    img.src = '/plots/' + path.split('/').pop() + '?t=' + new Date().getTime(); // Use the new /plots/ endpoint
+                    img.className = 'w-full h-auto rounded panel p-2 sm:p-4 bg-stone-50 shadow-inner';
+                    plotsContainer.appendChild(img);
+                });
+            });
+
             // --- UI & Control Logic ---
             function sendParamsToServer() {
                 const params = {
@@ -276,12 +293,11 @@
                     initialCondition: document.getElementById('initial-condition').value,
                     selectionMode: document.getElementById('selection-mode').value,
                     scoreCalculationMode: document.getElementById('score-calculation-mode').value,
-                    historyLength: parseInt(document.getElementById('history-length').value),
+                    historyLength: 1000001, // Hardcoded for now
                     bankCondition: document.getElementById('bank-condition').value,
                     bankValue: parseFloat(document.getElementById('bank-value-input').value),
                     numAgents: parseInt(document.getElementById('num-agents').value),
                     renderRatio: parseFloat(document.getElementById('render-ratio').value),
-                    
                     kymoAspect: parseFloat(document.getElementById('kymo-aspect').value)
                 };
                 socket.emit('update_params', params);
@@ -292,15 +308,11 @@
                 document.querySelectorAll('input[type="range"]').forEach(slider => {
                     const valueInput = document.getElementById(`${slider.id}-value`);
                     if (!valueInput) return;
-                    const syncSliderToInput = () => { valueInput.value = (slider.id === 'history-length' && parseInt(slider.value) >= 1001) ? "Infinite" : slider.value; };
-                    const syncInputToSlider = () => { slider.value = (valueInput.type === 'text' && valueInput.value.toLowerCase() === 'infinite') ? 1001 : valueInput.value; };
+                    const syncSliderToInput = () => { valueInput.value = slider.value; };
+                    const syncInputToSlider = () => { slider.value = valueInput.value; };
                     slider.addEventListener('input', syncSliderToInput);
                     valueInput.addEventListener('change', () => { syncInputToSlider(); sendParamsToServer(); });
-                    if (slider.id === 'kt-param') {
-                        slider.addEventListener('input', sendParamsToServer);
-                    } else {
-                        slider.addEventListener('change', sendParamsToServer);
-                    }
+                    slider.addEventListener('change', sendParamsToServer);
                     syncSliderToInput();
                 });
                 const standaloneControls = [
@@ -340,6 +352,10 @@
 
                 document.getElementById('save-frame-btn').addEventListener('click', () => {
                     socket.emit('save_frame');
+                });
+
+                document.getElementById('render-plots-btn').addEventListener('click', () => {
+                    fetch('/render_plots');
                 });
 
                 // Capture buttons

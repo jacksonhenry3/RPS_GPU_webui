@@ -22,6 +22,20 @@ class AgentSystem:
         self.selection_function = self.choose_new_strats_local_choice
         self.score_calculation_mode = 'total' # New attribute
 
+    def get_population_distribution(self):
+        """Returns the number of agents for each strategy."""
+        return cp.asnumpy(cp.sum(self.agent_strategies, axis=1))
+
+    def get_entropy(self):
+        """Calculates the entropy of the strategy distribution."""
+        pop_dist = cp.sum(self.agent_strategies, axis=1) / self.N
+        return cp.asnumpy(-cp.sum(pop_dist * cp.log(pop_dist + 1e-9)))
+
+    def get_appeal_distribution(self):
+        """Calculates the average appeal for each strategy."""
+        neigh_bank = self._calculate_neighborhood_scores()
+        return cp.asnumpy(cp.mean(neigh_bank, axis=1))
+
     def get_neighbor_pair_counts(self):
         s = self.agent_strategies.astype(self.precision)
         s_rock, s_paper, s_scissors = s[0], s[1], s[2]
@@ -183,4 +197,3 @@ class AgentSystem:
         labels[(angles >= 60)] = 1
         labels[(angles <= -60)] = 2
         return self._labels_to_one_hot(labels.flatten())
-
