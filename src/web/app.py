@@ -8,6 +8,8 @@ from flask_socketio import SocketIO
 
 from web.handlers import register_handlers
 from web.state import rps_sim, sim_state, nvimgcodec_encoder
+from app_utils import log_server
+import time
 
 # --- Temporary File Management ---
 temp_dir = tempfile.TemporaryDirectory()
@@ -47,6 +49,21 @@ app.wsgi_app = OODProxyMiddleware(app.wsgi_app)
 
 # --- Register Handlers ---
 register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, temp_dir)
+
+# --- Warm-up Simulation ---
+log_server("Performing initial simulation warm-up...")
+warmup_start_time = time.time()
+try:
+    # Initialize with default parameters (e.g., from rps_sim.params)
+    rps_sim.initialize(rps_sim.params)
+    # Perform a single step to trigger JIT compilation
+    rps_sim.step()
+    rps_sim.render()
+    # Also warm-up entropy calculation
+    rps_sim.agent_system.get_entropy()
+    log_server(f"Simulation warm-up complete in {time.time() - warmup_start_time:.2f} seconds.")
+except Exception as e:
+    log_server(f"Error during simulation warm-up: {e}")
 
 # --- Main Routes ---
 @app.route('/')
