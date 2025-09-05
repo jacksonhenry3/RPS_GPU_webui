@@ -60,10 +60,6 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
 
             sim_state.is_running = True
             sim_state.is_plotting = True
-            sim_state.history_pop = []
-            sim_state.history_entropy = []
-            sim_state.history_appeals = []
-            sim_state.plot_paths = []
 
             sim_state.perf['sim_steps_ps'] = 0
             sim_state.perf['render_fps'] = 0
@@ -92,10 +88,9 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         log_separator()
         sim_state.perf['sim_steps_ps'] = 0
         sim_state.perf['render_fps'] = 0
-        sim_state.is_plotting = False
+        sim_state.is_plotting = True # Enable plotting on reset
         sim_state.history_pop = []
         sim_state.history_entropy = []
-        sim_state.history_appeals = []
         sim_state.plot_paths = []
         rps_sim.reset()
         rps_sim.render()
@@ -187,7 +182,7 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
     @app.route('/render_plots')
     def render_plots():
         log_server("Render Plots command received.")
-        sim_state.is_plotting = False
+        # sim_state.is_plotting = False # Keep plotting enabled
         plot_paths = generate_plots(sim_state, rps_sim.params, temp_dir.name)
         sim_state.plot_paths = plot_paths
         socketio.emit('plots_ready', {'plot_paths': plot_paths})

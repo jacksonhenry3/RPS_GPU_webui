@@ -73,37 +73,10 @@ def plot_entropy_history(history_entropy, static_dir):
     plt.close(fig)
     return filepath
 
-def plot_appeal_history(history_appeals, static_dir):
-    """Generates a plot of appeal values over time."""
-    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-
-    if not history_appeals:
-        ax.text(0.5, 0.5, 'Simulation Paused - No Data Yet', ha='center', va='center', fontsize=12, color='gray')
-    else:
-        data = np.array(history_appeals)
-        time_steps = np.arange(len(data))
-
-        ax.plot(time_steps, data[:, 0], color=ROCK_COLOR, label='Rock Appeal', linewidth=2)
-        ax.plot(time_steps, data[:, 1], color=PAPER_COLOR, label='Paper Appeal', linewidth=2)
-        ax.plot(time_steps, data[:, 2], color=SCISSORS_COLOR, label='Scissors Appeal', linewidth=2)
-        
-        ax.set_ylim(0, max(0.01, np.max(data) * 1.1))
-        ax.set_xlim(0, max(1, len(data) - 1))
-        ax.legend(frameon=False, labelcolor=TEXT_COLOR)
-
-    _configure_plot_style(fig, ax, 'Appeal Over Time', 'Appeal')
-
-    filepath = os.path.join(static_dir, "appeal_history.png")
-    fig.savefig(filepath, format='png', bbox_inches='tight', pad_inches=0.2, facecolor=fig.get_facecolor())
-    plt.close(fig)
-    return filepath
-
 def generate_plots(sim_state, params, static_dir):
     plot_paths = []
     if sim_state.history_pop:
         plot_paths.append(plot_population_history(sim_state.history_pop, static_dir))
     if sim_state.history_entropy:
         plot_paths.append(plot_entropy_history(sim_state.history_entropy, static_dir))
-    if sim_state.history_appeals:
-        plot_paths.append(plot_appeal_history(sim_state.history_appeals, static_dir))
     return plot_paths

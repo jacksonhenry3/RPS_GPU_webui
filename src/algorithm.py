@@ -26,10 +26,50 @@ class AgentSystem:
         """Returns the number of agents for each strategy."""
         return cp.asnumpy(cp.sum(self.agent_strategies, axis=1))
 
-    def get_entropy(self):
-        """Calculates the entropy of the strategy distribution."""
-        pop_dist = cp.sum(self.agent_strategies, axis=1) / self.N
-        return cp.asnumpy(-cp.sum(pop_dist * cp.log(pop_dist + 1e-9)))
+
+    def get_entropy(self, block_size=2):
+        """Calculates the block entropy of the strategy distribution (vectorized)."""
+        if not self.grid_dim:
+            return 0.0
+        rows, cols = self.grid_dim
+        if rows % block_size != 0 or cols % block_size != 0:
+            raise ValueError("Grid dimensions must be divisible by block size.")
+
+        num_block_rows = rows // block_size
+        num_block_cols = cols // block_size
+        agents_per_block = block_size * block_size
+
+        # --- Vectorized Block Processing ---
+
+        # 1. Reshape and transpose to isolate blocks
+        # (3, rows, cols) -> (num_blocks, 3, agents_per_block)
+        strategies = self.agent_strategies.reshape(3, rows, cols)
+        blocks = strategies.reshape(3, num_block_rows, block_size, num_block_cols, block_size)
+        blocks = blocks.transpose(1, 3, 0, 2, 4)
+        blocks = blocks.reshape(num_block_rows * num_block_cols, 3, agents_per_block)
+
+        # 2. Convert all blocks from one-hot to strategy labels (0, 1, 2)
+        # Result shape: (num_blocks, agents_per_block)
+        strategy_labels = cp.argmax(blocks, axis=1)
+
+        # 3. Convert base-3 labels to a unique integer ID for each block
+        # This is a vectorized dot product for every block simultaneously
+        power_of_3 = 3 ** cp.arange(agents_per_block - 1, -1, -1, dtype=cp.int64)
+        block_integers = strategy_labels @ power_of_3
+
+        # --- Entropy Calculation (as before) ---
+
+        # 4. Count occurrences of each unique block configuration
+        max_block_val = 3**agents_per_block
+        counts = cp.bincount(block_integers, minlength=max_block_val)
+        
+        # 5. Calculate probabilities and entropy
+        # The sum of counts is simply the total number of blocks
+        total_blocks = num_block_rows * num_block_cols
+        probabilities = counts[counts > 0] / total_blocks
+        entropy = -cp.sum(probabilities * cp.log(probabilities))
+        
+        return float(entropy)
 
     def get_appeal_distribution(self):
         """Calculates the average appeal for each strategy."""

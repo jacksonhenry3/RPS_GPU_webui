@@ -74,7 +74,6 @@ def simulation_loop(socketio, rps_sim, sim_state):
                 if sim_state.is_plotting:
                     sim_state.history_pop.append(rps_sim.agent_system.get_population_distribution())
                     sim_state.history_entropy.append(rps_sim.agent_system.get_entropy())
-                    sim_state.history_appeals.append(rps_sim.agent_system.get_appeal_distribution())
 
             sim_state.sync_event_sim_done.send()
         else:
@@ -82,7 +81,6 @@ def simulation_loop(socketio, rps_sim, sim_state):
             if sim_state.is_plotting:
                 sim_state.history_pop.append(rps_sim.agent_system.get_population_distribution())
                 sim_state.history_entropy.append(rps_sim.agent_system.get_entropy())
-                sim_state.history_appeals.append(rps_sim.agent_system.get_appeal_distribution())
             steps_since_last_update += 1
             current_time = time.time()
             delta_time = current_time - last_update_time
