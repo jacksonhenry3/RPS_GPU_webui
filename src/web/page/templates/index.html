@@ -268,7 +268,8 @@
             });
 
             socket.on('request_plot_update', () => {
-                fetch('/render_plots');
+                const proxyPrefix = window.location.pathname.replace(/\/?$/, '');
+                fetch(`${proxyPrefix}/render_plots`);
             });
 
             socket.on('plots_ready', (data) => {
