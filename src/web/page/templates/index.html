@@ -275,9 +275,10 @@
             socket.on('plots_ready', (data) => {
                 const plotsContainer = document.getElementById('plots-container');
                 plotsContainer.innerHTML = ''; // Clear existing plots
+                const proxyPrefix = window.location.pathname.replace(/\/?$/, '');
                 data.plot_paths.forEach(path => {
                     const img = document.createElement('img');
-                    img.src = '/plots/' + path.split('/').pop() + '?t=' + new Date().getTime(); // Use the new /plots/ endpoint
+                    img.src = proxyPrefix + '/plots/' + path.split('/').pop() + '?t=' + new Date().getTime(); // Use the new /plots/ endpoint
                     img.className = 'w-full h-auto rounded panel p-2 sm:p-4 bg-stone-50 shadow-inner';
                     plotsContainer.appendChild(img);
                 });
@@ -356,7 +357,8 @@
                 });
 
                 document.getElementById('render-plots-btn').addEventListener('click', () => {
-                    fetch('/render_plots');
+                    const proxyPrefix = window.location.pathname.replace(/\/?$/, '');
+                    fetch(proxyPrefix + '/render_plots');
                 });
 
                 // Capture buttons

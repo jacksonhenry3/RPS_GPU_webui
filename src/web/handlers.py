@@ -176,7 +176,7 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         socketio.emit('simulation_config', {'height': rps_sim.visualizer.HEIGHT})
         rps_sim.render()
         _emit_frame(socketio, rps_sim, sim_state, nvimgcodec_encoder)
-        socketio.emit('request_plot_update')
+        # socketio.emit('request_plot_update')
 
 
     @app.route('/render_plots')

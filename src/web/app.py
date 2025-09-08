@@ -11,6 +11,8 @@ from web.state import rps_sim, sim_state, nvimgcodec_encoder
 from app_utils import log_server
 import time
 
+import measurements
+
 # --- Temporary File Management ---
 temp_dir = tempfile.TemporaryDirectory()
 atexit.register(temp_dir.cleanup)
@@ -60,7 +62,8 @@ try:
     rps_sim.step()
     rps_sim.render()
     # Also warm-up entropy calculation
-    rps_sim.agent_system.get_entropy()
+    measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
+
     log_server(f"Simulation warm-up complete in {time.time() - warmup_start_time:.2f} seconds.")
 except Exception as e:
     log_server(f"Error during simulation warm-up: {e}")
