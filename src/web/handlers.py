@@ -133,7 +133,7 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         hostname = os.environ.get('HOSTNAME')
         if hostname and (hostname.startswith('gpu-') or '.' in hostname):
             full_hostname = f"{hostname}.cm.cluster" if '.' not in hostname else hostname
-            proxy_prefix = f"/node/{full_hostname}/{os.environ.get('PORT', PORT)}"
+            proxy_prefix = f"/node/{full_hostname}/{os.environ['PORT']}"
         else:
             proxy_prefix = f'http://localhost:{os.environ['PORT']}'
         
