@@ -118,7 +118,13 @@ class AgentSystem:
             'vertical_stripes': lambda: initial_conditions._vertical_stripes(self.N, self.grid_dim, 3),
             'pie_slices': lambda: initial_conditions._pie_slices(self.N, self.grid_dim),
             'single_invader': lambda: initial_conditions._single_invader(self.N, self.grid_dim),
+            'double_invader': lambda: initial_conditions._double_invader(self.N, self.grid_dim),
+            'cross_invasion': lambda: initial_conditions._cross_invasion(self.N, self.grid_dim),
+            'corner_siege': lambda: initial_conditions._corner_siege(self.N, self.grid_dim),
+            'diamond_lattice': lambda: initial_conditions._diamond_lattice(self.N, self.grid_dim),
+            'periodic_stripes': lambda: initial_conditions._periodic_stripes(self.N, self.grid_dim),
+            'symmetric_gradient': lambda: initial_conditions._symmetric_gradient(self.N, self.grid_dim),
             'split': lambda: initial_conditions._split_strategies(self.N),
-            'random': lambda: initial_conditions._random_strategies(self.N)
+            'random': lambda: initial_conditions._random_strategies(self.N),
         }
         self.agent_strategies = conditions.get(condition, lambda: initial_conditions._random_strategies(self.N))()
