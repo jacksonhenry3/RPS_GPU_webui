@@ -58,6 +58,9 @@ class AgentSystem:
         self._initialize_strategies(condition=initial_condition)
         if bank_condition == 'random':
             self.agent_bank_values = cp.random.uniform(-bank_value, bank_value, size=self.N).astype(self.precision)
+        elif bank_condition == 'single_invader':
+            from initial_conditions import _single_invader_bank
+            self.agent_bank_values = _single_invader_bank(self.N, self.grid_dim, float(bank_value))
         else:
             self.agent_bank_values.fill(float(bank_value))
 
