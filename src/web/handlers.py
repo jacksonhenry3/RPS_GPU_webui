@@ -132,10 +132,11 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         with open(filepath, 'wb') as f: f.write(png_bytes)
         hostname = os.environ.get('HOSTNAME')
         if hostname and (hostname.startswith('gpu-') or '.' in hostname):
-            full_hostname = f"{hostname}.cm.cluster" if '.' not in hostname else hostname
+            base_hostname = hostname.split('.')[0]
+            full_hostname = f"{base_hostname}.cm.cluster"
             proxy_prefix = f"/node/{full_hostname}/{os.environ['PORT']}"
         else:
-            proxy_prefix = f'http://localhost:{os.environ['PORT']}'
+            proxy_prefix = f'http://localhost:{os.environ["PORT"]}'
         
         download_url = f"{proxy_prefix}/download/{filename}"
         print(download_url)
