@@ -63,7 +63,7 @@ def plot_entropy_history(history_entropy, static_dir):
 
         ax.plot(time_steps, data, color=TEXT_COLOR, linewidth=2)
         
-        ax.set_ylim(0, max(0.01, np.max(data) * 1.1))
+        ax.set_ylim(np.min(data) * .9, max(0.01, np.max(data) * 1.1))
         ax.set_xlim(0, max(1, len(data) - 1))
 
     _configure_plot_style(fig, ax, 'Entropy Over Time', 'Entropy')

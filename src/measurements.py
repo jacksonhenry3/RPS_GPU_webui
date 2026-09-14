@@ -63,7 +63,7 @@ def get_entropy(agent_strategies, N, grid_dim, block_size=2):
     # 5. Calculate probabilities and entropy
     # The sum of counts is simply the total number of blocks
     probabilities = counts[counts > 0] / total_blocks
-    entropy = -cp.sum(probabilities * cp.log(probabilities))
+    entropy = -cp.sum(probabilities * cp.log2(probabilities))
     
     return float(entropy)
 

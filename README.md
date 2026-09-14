@@ -19,11 +19,16 @@
    
 4. **Run the application:**
    ```sh
-   uv run src/app.py
+   uv run run.py [port]
    ```
+   `port` is optional and defaults to `4629`.
 
 5. **Access the web interface:**
-   - The server will print a URL in the terminal. Open it in your browser.
+   - The server prints an on-demand URL to the terminal, e.g.:
+     ```
+     https://ondemand.turing.wpi.edu/node/gpu-5-28.int.turing.wpi.edu/4629
+     ```
+     Open it in your browser.
 
 
 

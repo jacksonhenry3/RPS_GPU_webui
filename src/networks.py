@@ -5,7 +5,7 @@ import networkx as nx
 import time
 from app_utils import log_network
 
-precision = cp.float64
+precision = cp.float32
 
 def create(network_type, num_agents_param, kymo_aspect=3.0):
     """

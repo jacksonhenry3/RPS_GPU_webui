@@ -13,6 +13,11 @@ from app_utils import log_error, log_server
 import measurements
 
 
+# Warn when the softmax selection's exponent argument gets within this many
+# natural-log units of underflowing to a hard 0 for the active dtype.
+EXP_HEADROOM_WARNING_NATS = 10.0
+
+
 # --- Helper Functions ---
 def _generate_filename(params, extension):
     net = params['networkType'].replace('_', '-')
@@ -89,6 +94,14 @@ def simulation_loop(socketio, rps_sim, sim_state):
                 perf['sim_steps_ps'] = steps_since_last_update / delta_time
                 last_update_time = current_time
                 steps_since_last_update = 0
+
+                headroom = rps_sim.agent_system.pop_worst_exp_headroom()
+                if headroom is not None and headroom < EXP_HEADROOM_WARNING_NATS:
+                    log_error(
+                        f"Softmax exponent headroom low: {headroom:.1f} nats above float underflow "
+                        f"(dtype={rps_sim.agent_system.precision.__name__}). Non-winning strategies may be "
+                        "losing selection probability resolution — consider raising kT."
+                    )
             socketio.sleep(0)
     log_server("Simulation loop stopped.")
 

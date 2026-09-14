@@ -1,7 +1,7 @@
 import cupy as cp
 
 # Define precision and colors for the simulation
-precision = cp.float64
+precision = cp.float32
 # Colors: Teal, Orange, Purple
 COLORS = cp.array([[44., 160., 148.], [255., 127., 14.], [148., 103., 189.]]) / 255.
 
@@ -60,7 +60,7 @@ class SimulationVisualizer:
         )
 
         # NEW: Increased brightness scale from 0.5 to 1.0 for higher contrast
-        brightness = 0.5 + 0.5 * norm_bank
+        brightness = norm_bank
             
         modulated_colors = base_colors * brightness[:, cp.newaxis]
         return (cp.clip(modulated_colors, 0, 1) * 255).astype(cp.uint8)

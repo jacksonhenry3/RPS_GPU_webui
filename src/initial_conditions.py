@@ -1,7 +1,12 @@
 import cupy as cp
 
+# Must match algorithm.precision / networks.precision so agent_strategies
+# stays float32 through the adjacency-matrix matmuls instead of silently
+# upcasting back to float64 via int/float type promotion.
+precision = cp.float32
+
 def _labels_to_one_hot(labels, N):
-    return cp.eye(3, dtype=int)[labels].T
+    return cp.eye(3, dtype=precision)[labels].T
 
 def _random_strategies(N):
     return _labels_to_one_hot(cp.random.randint(0, 3, size=N), N)
@@ -73,18 +78,12 @@ def _cross_invasion(N, grid_dim):
         rows, cols = grid_dim
         center_row = rows // 2
         center_col = cols // 2
-        
-        # Paper cross (horizontal + vertical lines)
-        for col in range(cols):
-            idx = center_row * cols + col
-            labels[idx] = 1  # Paper horizontal line
-        for row in range(rows):
-            idx = row * cols + center_col
-            labels[idx] = 1  # Paper vertical line
-            
-        # Rock at exact center
-        center_idx = center_row * cols + center_col
-        labels[center_idx] = 0  # Rock
+
+        rr, cc = cp.meshgrid(cp.arange(rows), cp.arange(cols), indexing='ij')
+        labels2d = cp.full((rows, cols), 2, dtype=int)
+        labels2d[(rr == center_row) | (cc == center_col)] = 1  # Paper cross
+        labels2d[(rr == center_row) & (cc == center_col)] = 0  # Rock at exact center
+        labels = labels2d.flatten()
     else:
         # 1D fallback - Paper stripe with Rock center
         center = N // 2
@@ -102,30 +101,23 @@ def _corner_siege(N, grid_dim):
         rows, cols = grid_dim
         corner_size = max(2, min(rows, cols) // 8)
         center_size = max(3, min(rows, cols) // 6)
-        
+
+        rr, cc = cp.meshgrid(cp.arange(rows), cp.arange(cols), indexing='ij')
+        labels2d = cp.zeros((rows, cols), dtype=int)
+
         # Paper in all four corners
-        for r in range(corner_size):
-            for c in range(corner_size):
-                # Top-left
-                if r < rows and c < cols:
-                    labels[r * cols + c] = 1
-                # Top-right  
-                if r < rows and (cols - 1 - c) >= 0:
-                    labels[r * cols + (cols - 1 - c)] = 1
-                # Bottom-left
-                if (rows - 1 - r) >= 0 and c < cols:
-                    labels[(rows - 1 - r) * cols + c] = 1
-                # Bottom-right
-                if (rows - 1 - r) >= 0 and (cols - 1 - c) >= 0:
-                    labels[(rows - 1 - r) * cols + (cols - 1 - c)] = 1
-        
+        in_corner_rows = (rr < corner_size) | (rr >= rows - corner_size)
+        in_corner_cols = (cc < corner_size) | (cc >= cols - corner_size)
+        labels2d[in_corner_rows & in_corner_cols] = 1
+
         # Scissors in center
         center_row = rows // 2
         center_col = cols // 2
-        for r in range(center_row - center_size//2, center_row + center_size//2 + 1):
-            for c in range(center_col - center_size//2, center_col + center_size//2 + 1):
-                if 0 <= r < rows and 0 <= c < cols:
-                    labels[r * cols + c] = 2
+        half = center_size // 2
+        in_center = (cp.abs(rr - center_row) <= half) & (cp.abs(cc - center_col) <= half)
+        labels2d[in_center] = 2
+
+        labels = labels2d.flatten()
     else:
         # 1D fallback
         corner_size = N // 8
@@ -140,89 +132,60 @@ def _corner_siege(N, grid_dim):
 
 def _diamond_lattice(N, grid_dim):
     """Alternating diamond/checkerboard pattern of all three strategies"""
-    labels = cp.zeros(N, dtype=int)
-    
     if grid_dim and len(grid_dim) == 2:
         rows, cols = grid_dim
-        
-        for r in range(rows):
-            for c in range(cols):
-                idx = r * cols + c
-                # Create diagonal pattern
-                pattern_val = (r + c) % 3
-                labels[idx] = pattern_val
+        rr, cc = cp.meshgrid(cp.arange(rows), cp.arange(cols), indexing='ij')
+        labels = ((rr + cc) % 3).flatten()
     else:
         # 1D - repeating pattern
-        for i in range(N):
-            labels[i] = i % 3
-    
+        labels = cp.arange(N) % 3
+
     return _labels_to_one_hot(labels, N)
 
 def _periodic_stripes(N, grid_dim):
     """Symmetric periodic stripes: RRR-PPP-SSS pattern"""
-    labels = cp.zeros(N, dtype=int)
     stripe_width = 3
-    
+
     if grid_dim and len(grid_dim) == 2:
         # 2D - horizontal stripes, symmetric about center
         rows, cols = grid_dim
         center_row = rows // 2
-        
-        for r in range(rows):
-            # Distance from center row
-            dist_from_center = abs(r - center_row)
-            # Which stripe group (0=Rock, 1=Paper, 2=Scissors)
-            stripe_group = (dist_from_center // stripe_width) % 3
-            
-            for c in range(cols):
-                idx = r * cols + c
-                labels[idx] = stripe_group
+
+        dist_from_center = cp.abs(cp.arange(rows) - center_row)
+        stripe_group = (dist_from_center // stripe_width) % 3
+        labels = cp.broadcast_to(stripe_group[:, None], (rows, cols)).flatten()
     else:
         # 1D - symmetric stripes from center
         center = N // 2
-        
-        for i in range(N):
-            # Distance from center
-            dist_from_center = abs(i - center)
-            # Which stripe group
-            stripe_group = (dist_from_center // stripe_width) % 3
-            labels[i] = stripe_group
-    
+        dist_from_center = cp.abs(cp.arange(N) - center)
+        labels = (dist_from_center // stripe_width) % 3
+
     return _labels_to_one_hot(labels, N)
 
 def _symmetric_gradient(N, grid_dim):
     """Symmetric gradient: Rock center → Paper middle → Scissors outer"""
-    labels = cp.full(N, 2, dtype=int)  # Scissors background
-    
     if grid_dim and len(grid_dim) == 2:
         rows, cols = grid_dim
         center_row = rows / 2
         center_col = cols / 2
         max_distance = cp.sqrt((rows/2)**2 + (cols/2)**2)
-        
-        for r in range(rows):
-            for c in range(cols):
-                idx = r * cols + c
-                distance = cp.sqrt((r - center_row)**2 + (c - center_col)**2)
-                
-                if distance <= max_distance * 0.33:
-                    labels[idx] = 0  # Rock at center
-                elif distance <= max_distance * 0.66:
-                    labels[idx] = 1  # Paper in middle
-                # Scissors on outside
+
+        rr, cc = cp.meshgrid(cp.arange(rows), cp.arange(cols), indexing='ij')
+        distance = cp.sqrt((rr - center_row)**2 + (cc - center_col)**2)
+
+        labels2d = cp.full((rows, cols), 2, dtype=int)  # Scissors on outside
+        labels2d[distance <= max_distance * 0.66] = 1  # Paper in middle
+        labels2d[distance <= max_distance * 0.33] = 0  # Rock at center
+        labels = labels2d.flatten()
     else:
         # 1D - symmetric gradient from center
         center = N // 2
         max_dist = N // 2
-        
-        for i in range(N):
-            distance = abs(i - center)
-            
-            if distance <= max_dist * 0.33:
-                labels[i] = 0  # Rock
-            elif distance <= max_dist * 0.66:
-                labels[i] = 1  # Paper
-            # Scissors on edges
-    
+        distance = cp.abs(cp.arange(N) - center)
+
+        labels = cp.full(N, 2, dtype=int)  # Scissors on edges
+        labels[distance <= max_dist * 0.66] = 1  # Paper
+        labels[distance <= max_dist * 0.33] = 0  # Rock
+
     return _labels_to_one_hot(labels, N)
     
