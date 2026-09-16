@@ -66,7 +66,7 @@ class Simulation:
         self.agent_system.reset_state(
             initial_condition=self.params['initialCondition'],
             bank_condition=self.params['bankCondition'],
-            bank_value=self.params['bankValue']
+            total_bank_value=self.params['bankValue']
         )
         log_sim(f"State reset to '{self.params['initialCondition']}' strategies and '{self.params['bankCondition']}' bank values.")
         if "1d" in self.params['networkType']:

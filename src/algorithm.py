@@ -54,15 +54,17 @@ class AgentSystem:
         elif mode == 'global_random': self.selection_function = self.choose_new_strats_random
         elif mode == 'deterministic': self.selection_function = self.choose_new_strats_deterministic
 
-    def reset_state(self, initial_condition='random', bank_condition='constant', bank_value=0.0):
+    def reset_state(self, initial_condition='random', bank_condition='constant', total_bank_value=0.0):
         self._initialize_strategies(condition=initial_condition)
         if bank_condition == 'random':
-            self.agent_bank_values = cp.random.uniform(-bank_value, bank_value, size=self.N).astype(self.precision)
+            raw_bank_values = cp.random.uniform(-total_bank_value, total_bank_value, size=self.N).astype(self.precision)
+            normalized_bank_values = raw_bank_values // cp.sum(raw_bank_values)
+            self.agent_bank_values = normalized_bank_values * total_bank_value
         elif bank_condition == 'single_invader':
             from initial_conditions import _single_invader_bank
-            self.agent_bank_values = _single_invader_bank(self.N, self.grid_dim, float(bank_value))
+            self.agent_bank_values = _single_invader_bank(self.N, self.grid_dim, float(total_bank_value))
         else:
-            self.agent_bank_values.fill(float(bank_value))
+            self.agent_bank_values.fill(float(total_bank_value // self.N))
 
     def update_physics(self):
         self._play_round()

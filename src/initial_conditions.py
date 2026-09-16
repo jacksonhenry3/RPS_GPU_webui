@@ -226,7 +226,7 @@ def _symmetric_gradient(N, grid_dim):
     
     return _labels_to_one_hot(labels, N)
     
-def _single_invader_bank(N, grid_dim, bank_value):
+def _single_invader_bank(N, grid_dim, total_bank_value):
     """
     Creates bank values with all agents at 0 except the center agent.
     
@@ -240,8 +240,8 @@ def _single_invader_bank(N, grid_dim, bank_value):
     """
     import cupy as cp
     
-    # Initialize all agents to -1000
-    bank_values = cp.full(N, -1000.0, dtype=float)
+    # Initialize all agents
+    bank_values = cp.full(N, float(total_bank_value // (2*(N-1))) , dtype=float)
     
     # Calculate center index
     if grid_dim:
@@ -250,6 +250,6 @@ def _single_invader_bank(N, grid_dim, bank_value):
         center_index = N // 2
     
     # Set center agent to the specified bank value
-    bank_values[center_index] = float(bank_value)
+    bank_values[center_index] = float((total_bank_value // 2))
     
     return bank_values
