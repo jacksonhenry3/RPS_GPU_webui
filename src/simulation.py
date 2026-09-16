@@ -31,6 +31,8 @@ class Simulation:
             'win': 2.0, 'tie': 1.5, 'loss': 0.0, 'kT': 100.0,
             'historyLength': 1_000_001,
             'renderRatio': 1.0,
+            'entropyN': 2,
+            'bankBins': 3,
             'kymoAspect': 3.0
         }
 
@@ -54,6 +56,8 @@ class Simulation:
 
     def update_parameters(self, params):
         self.params.update(params)
+        # Two bins minimum: with one bin every agent carries the same symbol and the bank entropy is identically zero.
+        self.params['bankBins'] = max(2, self.params.get('bankBins', 3))
         self.agent_system.update_params(self.params)
         log_sim(f"Params Updated: kT={self.params['kT']:.1f}, mode='{self.params['selectionMode']}', score='{self.params['scoreCalculationMode']}'")
 

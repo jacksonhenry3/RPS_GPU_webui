@@ -56,6 +56,20 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
 
 
 # --- Background Threads ---
+def _record_measurements(rps_sim, sim_state):
+    agent_system = rps_sim.agent_system
+    strategies, banks = agent_system.agent_strategies, agent_system.agent_bank_values
+    N, grid_dim = agent_system.N, agent_system.grid_dim
+    n = rps_sim.params.get('entropyN', 2)
+    k = rps_sim.params.get('bankBins', 3)
+    sim_state.history_pop.append(measurements.get_population_distribution(strategies))
+    sim_state.history_entropy.append(measurements.get_entropy(strategies, N, grid_dim, n))
+    sim_state.history_bank_entropy.append(measurements.get_bank_entropy(banks, N, grid_dim, n, k))
+    sim_state.history_joint_entropy.append(measurements.get_joint_entropy(strategies, banks, N, grid_dim, n, k))
+    sim_state.history_entropy_rate.append(measurements.get_entropy_rate(strategies, N, grid_dim, n))
+    sim_state.history_excess_entropy.append(measurements.get_excess_entropy(strategies, N, grid_dim, n))
+
+
 def simulation_loop(socketio, rps_sim, sim_state):
     log_server("Starting simulation loop.")
     perf = sim_state.perf
@@ -73,15 +87,13 @@ def simulation_loop(socketio, rps_sim, sim_state):
                 if not sim_state.is_running: break
                 rps_sim.step()
                 if sim_state.is_plotting:
-                    sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
-                    sim_state.history_entropy.append(measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim))
+                    _record_measurements(rps_sim, sim_state)
 
             sim_state.sync_event_sim_done.send()
         else:
             rps_sim.step()
             if sim_state.is_plotting:
-                sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
-                sim_state.history_entropy.append(measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim))
+                _record_measurements(rps_sim, sim_state)
             steps_since_last_update += 1
             current_time = time.time()
             delta_time = current_time - last_update_time

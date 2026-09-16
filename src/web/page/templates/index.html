@@ -108,6 +108,14 @@
                                 <label for="kymo-aspect" class="block text-sm mb-1">Kymo Aspect</label>
                                 <input type="number" id="kymo-aspect" value="3" step="0.1" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
                             </div>
+                            <div>
+                                <label for="entropy-n" class="block text-sm mb-1">Entropy N-Point</label>
+                                <input type="number" id="entropy-n" value="2" step="1" min="1" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
+                            <div>
+                                <label for="bank-bins" class="block text-sm mb-1">Bank Value Bins</label>
+                                <input type="number" id="bank-bins" value="3" step="1" min="2" class="w-full bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
                         </div>
                         
                         <div class="flex items-center justify-between pt-2">
@@ -307,7 +315,9 @@
                     bankValue: parseFloat(document.getElementById('bank-value-input').value),
                     numAgents: parseInt(document.getElementById('num-agents').value),
                     renderRatio: parseFloat(document.getElementById('render-ratio').value),
-                    kymoAspect: parseFloat(document.getElementById('kymo-aspect').value)
+                    kymoAspect: parseFloat(document.getElementById('kymo-aspect').value),
+                    entropyN: parseInt(document.getElementById('entropy-n').value),
+                    bankBins: parseInt(document.getElementById('bank-bins').value)
                 };
                 socket.emit('update_params', params);
             }
@@ -326,7 +336,7 @@
                 });
                 const standaloneControls = [
                     'network-type', 'initial-condition', 'selection-mode', 'score-calculation-mode',
-                    'bank-condition', 'bank-value-input', 'num-agents', 'render-ratio', 'kymo-aspect',
+                    'bank-condition', 'bank-value-input', 'num-agents', 'render-ratio', 'kymo-aspect', 'entropy-n', 'bank-bins',
                     'win-payoff-value', 'tie-payoff-value', 'loss-payoff-value', 'kt-param-value'
                 ];
                 standaloneControls.forEach(id => {

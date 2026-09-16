@@ -15,17 +15,11 @@ if __name__ == '__main__':
     HOST, PORT = '0.0.0.0', args.port
     os.environ['PORT'] = str(PORT)
     import socket
-    hostname = os.environ.get('HOSTNAME') or socket.gethostname()
     BLUE_BOLD, RESET = '\033[1;94m', '\033[0m'
     log_separator()
     log_server(f"Starting Flask-SocketIO server on {HOST}:{PORT}")
-    if hostname and (hostname.startswith('gpu-') or '.' in hostname):
-        base_hostname = hostname.split('.')[0]
-        full_hostname = f"{base_hostname}.cm.cluster"
-        node_url = f"https://ondemand.turing.wpi.edu/node/{full_hostname}/{PORT}"
-        print(f"✅ On-demand node detected. Connect using: {BLUE_BOLD}{node_url}{RESET}")
-    else:
-        local_url = f"http://localhost:{PORT}"
-        print(f"✅ Access locally at {BLUE_BOLD}{local_url}{RESET}")
+    base_hostname = socket.gethostname().split('.')[0]
+    node_url = f"https://ondemand.turing.wpi.edu/node/{base_hostname}.int.turing.wpi.edu/{PORT}"
+    print(f"✅ Connect using: {BLUE_BOLD}{node_url}{RESET}")
     log_separator()
     socketio.run(app, host=HOST, port=PORT)

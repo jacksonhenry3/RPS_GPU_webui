@@ -1,4 +1,6 @@
 import os
+import socket
+
 from flask import request
 from eventlet.event import Event
 from nvidia import nvimgcodec
@@ -91,6 +93,10 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         sim_state.is_plotting = True # Enable plotting on reset
         sim_state.history_pop = []
         sim_state.history_entropy = []
+        sim_state.history_bank_entropy = []
+        sim_state.history_joint_entropy = []
+        sim_state.history_entropy_rate = []
+        sim_state.history_excess_entropy = []
         sim_state.plot_paths = []
         rps_sim.reset()
         rps_sim.render()
@@ -130,13 +136,8 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         nv_image = nvimgcodec.as_image(image_array_gpu)
         png_bytes = nvimgcodec_encoder.encode(nv_image, "png")
         with open(filepath, 'wb') as f: f.write(png_bytes)
-        hostname = os.environ.get('HOSTNAME')
-        if hostname and (hostname.startswith('gpu-') or '.' in hostname):
-            base_hostname = hostname.split('.')[0]
-            full_hostname = f"{base_hostname}.cm.cluster"
-            proxy_prefix = f"/node/{full_hostname}/{os.environ['PORT']}"
-        else:
-            proxy_prefix = f'http://localhost:{os.environ["PORT"]}'
+        base_hostname = socket.gethostname().split('.')[0]
+        proxy_prefix = f"/node/{base_hostname}.int.turing.wpi.edu/{os.environ['PORT']}"
         
         download_url = f"{proxy_prefix}/download/{filename}"
         print(download_url)

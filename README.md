@@ -19,7 +19,7 @@
    
 4. **Run the application:**
    ```sh
-   uv run src/app.py
+   uv run run.py
    ```
 
 5. **Access the web interface:**
