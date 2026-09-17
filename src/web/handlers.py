@@ -91,6 +91,7 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         sim_state.is_plotting = True # Enable plotting on reset
         sim_state.history_pop = []
         sim_state.history_entropy = []
+        sim_state.history_mutual_info = []
         sim_state.plot_paths = []
         rps_sim.reset()
         rps_sim.render()

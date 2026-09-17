@@ -61,8 +61,9 @@ try:
     # Perform a single step to trigger JIT compilation
     rps_sim.step()
     rps_sim.render()
-    # Also warm-up entropy calculation
-    measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
+    # Also warm-up entropy and mutual information calculation
+    entropy_spectrum = measurements.get_entropy_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
+    measurements.get_mutual_information_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim, entropy_spectrum=entropy_spectrum)
 
     log_server(f"Simulation warm-up complete in {time.time() - warmup_start_time:.2f} seconds.")
 except Exception as e:

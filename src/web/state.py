@@ -23,6 +23,7 @@ class State:
         }
         self.history_pop = []
         self.history_entropy = []
+        self.history_mutual_info = []
         self.history_appeals = []
         self.plot_paths = []
 

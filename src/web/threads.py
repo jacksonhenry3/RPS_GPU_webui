@@ -79,14 +79,18 @@ def simulation_loop(socketio, rps_sim, sim_state):
                 rps_sim.step()
                 if sim_state.is_plotting:
                     sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
-                    sim_state.history_entropy.append(measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim))
+                    entropy_spectrum = measurements.get_entropy_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
+                    sim_state.history_entropy.append(entropy_spectrum)
+                    sim_state.history_mutual_info.append(measurements.get_mutual_information_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim, entropy_spectrum=entropy_spectrum))
 
             sim_state.sync_event_sim_done.send()
         else:
             rps_sim.step()
             if sim_state.is_plotting:
                 sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
-                sim_state.history_entropy.append(measurements.get_entropy(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim))
+                entropy_spectrum = measurements.get_entropy_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
+                sim_state.history_entropy.append(entropy_spectrum)
+                sim_state.history_mutual_info.append(measurements.get_mutual_information_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim, entropy_spectrum=entropy_spectrum))
             steps_since_last_update += 1
             current_time = time.time()
             delta_time = current_time - last_update_time
