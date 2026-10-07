@@ -109,6 +109,17 @@ class AgentSystem:
         self._worst_exp_arg = None
         return headroom
 
+    def _sample_strategies(self, probs):
+        # Keep draws in float64: casting a value just below 1 to float32 can
+        # produce 1, making every comparison false and argmax choose rock.
+        # Normalize the entire CDF in float64, including repeated endpoints
+        # from zero-probability strategies, so no rounding gap is left at 1.
+        cdf = cp.cumsum(probs, axis=0, dtype=cp.float64)
+        cdf /= cdf[-1:, :]
+        r = cp.random.rand(self.N)
+        chosen = cp.argmax(r < cdf, axis=0)
+        self.agent_strategies = initial_conditions._labels_to_one_hot(chosen, self.N)
+
     def choose_new_strats_local_choice(self):
         neigh_bank = self._calculate_neighborhood_scores()
         strategies_in_neighborhood = self._neighbor_strategy_counts + self.agent_strategies
@@ -119,9 +130,7 @@ class AgentSystem:
         self._track_exp_headroom(exp_arg, has_masked_entries=True)
         exp_payoff = cp.exp(exp_arg, dtype=self.precision)
         probs = exp_payoff / cp.sum(exp_payoff, axis=0, keepdims=True)
-        r = cp.random.rand(self.N).astype(self.precision)
-        chosen = cp.argmax(r < cp.cumsum(probs, axis=0), axis=0)
-        self.agent_strategies = initial_conditions._labels_to_one_hot(chosen, self.N)
+        self._sample_strategies(probs)
 
     def choose_new_strats_random(self):
         neigh_bank = self._calculate_neighborhood_scores()
@@ -131,9 +140,7 @@ class AgentSystem:
         self._track_exp_headroom(exp_arg, has_masked_entries=False)
         exp_payoff = cp.exp(exp_arg, dtype=self.precision)
         probs = exp_payoff / cp.sum(exp_payoff, axis=0, keepdims=True)
-        r = cp.random.rand(self.N).astype(self.precision)
-        chosen = cp.argmax(r < cp.cumsum(probs, axis=0), axis=0)
-        self.agent_strategies = initial_conditions._labels_to_one_hot(chosen, self.N)
+        self._sample_strategies(probs)
     
     def choose_new_strats_deterministic(self):
         neigh_bank = self._calculate_neighborhood_scores()
