@@ -11,7 +11,8 @@ from web.state import rps_sim, sim_state, nvimgcodec_encoder
 from app_utils import log_server
 import time
 
-import measurements
+from entropy import state_labels, measure
+import cupy as cp
 
 # --- Temporary File Management ---
 temp_dir = tempfile.TemporaryDirectory()
@@ -61,9 +62,8 @@ try:
     # Perform a single step to trigger JIT compilation
     rps_sim.step()
     rps_sim.render()
-    # Also warm-up entropy and mutual information calculation
-    entropy_spectrum = measurements.get_entropy_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
-    measurements.get_mutual_information_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim, entropy_spectrum=entropy_spectrum)
+    system = rps_sim.agent_system
+    measure(state_labels(system.agent_strategies, system.agent_bank_values, xp=cp), xp=cp)
 
     log_server(f"Simulation warm-up complete in {time.time() - warmup_start_time:.2f} seconds.")
 except Exception as e:

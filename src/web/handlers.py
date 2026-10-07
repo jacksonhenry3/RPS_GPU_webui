@@ -8,6 +8,7 @@ import cupy as cp
 from app_utils import log_server, log_separator
 from web.threads import (
     simulation_loop,
+    step_and_record,
     render_loop,
     process_recording,
     _emit_frame,
@@ -89,9 +90,7 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
         sim_state.perf['sim_steps_ps'] = 0
         sim_state.perf['render_fps'] = 0
         sim_state.is_plotting = True # Enable plotting on reset
-        sim_state.history_pop = []
-        sim_state.history_entropy = []
-        sim_state.history_mutual_info = []
+        sim_state.history_measurements = []
         sim_state.plot_paths = []
         rps_sim.reset()
         rps_sim.render()
@@ -115,6 +114,7 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
             rps_sim.initialize(params)
             socketio.emit('simulation_config', {'height': rps_sim.visualizer.HEIGHT})
 
+        sim_state.history_measurements = []
         rps_sim.update_parameters(params)
         rps_sim.render()
         _emit_frame(socketio, rps_sim, sim_state, nvimgcodec_encoder)
@@ -167,7 +167,8 @@ def register_handlers(socketio, app, rps_sim, sim_state, nvimgcodec_encoder, tem
     def handle_step():
         if sim_state.is_running: return
         log_server("Step command received.")
-        rps_sim.step()
+        sim_state.is_plotting = True
+        step_and_record(rps_sim, sim_state)
         rps_sim.render()
         _emit_frame(socketio, rps_sim, sim_state, nvimgcodec_encoder)
         socketio.emit('request_plot_update')

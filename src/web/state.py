@@ -21,10 +21,7 @@ class State:
             'sim_steps_ps': 0,
             'render_fps': 0,
         }
-        self.history_pop = []
-        self.history_entropy = []
-        self.history_mutual_info = []
-        self.history_appeals = []
+        self.history_measurements = []
         self.plot_paths = []
 
 # --- Global State and Initialization ---

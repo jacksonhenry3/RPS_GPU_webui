@@ -10,7 +10,7 @@ from eventlet.event import Event
 from nvidia import nvimgcodec
 
 from app_utils import log_error, log_server
-import measurements
+from entropy import state_labels, measure
 
 
 # Warn when the softmax selection's exponent argument gets within this many
@@ -61,6 +61,18 @@ def _emit_frame(socketio, sim_instance, sim_state, nvimgcodec_encoder):
 
 
 # --- Background Threads ---
+def step_and_record(rps_sim, sim_state):
+    system = rps_sim.agent_system
+    bins = int(rps_sim.params.get('bankBins', 3))
+    edges = rps_sim.params.get('bankEdges')
+    previous = state_labels(system.agent_strategies, system.agent_bank_values, bins, edges, cp) if sim_state.is_plotting else None
+    rps_sim.step()
+    if sim_state.is_plotting:
+        labels = state_labels(system.agent_strategies, system.agent_bank_values, bins, edges, cp)
+        metrics, _ = measure(labels, bins, previous, cp)
+        sim_state.history_measurements.append({'step': rps_sim.time_step, **metrics})
+
+
 def simulation_loop(socketio, rps_sim, sim_state):
     log_server("Starting simulation loop.")
     perf = sim_state.perf
@@ -76,21 +88,11 @@ def simulation_loop(socketio, rps_sim, sim_state):
             steps_to_run = rps_sim.steps_per_frame
             for _ in range(steps_to_run):
                 if not sim_state.is_running: break
-                rps_sim.step()
-                if sim_state.is_plotting:
-                    sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
-                    entropy_spectrum = measurements.get_entropy_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
-                    sim_state.history_entropy.append(entropy_spectrum)
-                    sim_state.history_mutual_info.append(measurements.get_mutual_information_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim, entropy_spectrum=entropy_spectrum))
+                step_and_record(rps_sim, sim_state)
 
             sim_state.sync_event_sim_done.send()
         else:
-            rps_sim.step()
-            if sim_state.is_plotting:
-                sim_state.history_pop.append(measurements.get_population_distribution(rps_sim.agent_system.agent_strategies))
-                entropy_spectrum = measurements.get_entropy_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim)
-                sim_state.history_entropy.append(entropy_spectrum)
-                sim_state.history_mutual_info.append(measurements.get_mutual_information_spectrum(rps_sim.agent_system.agent_strategies, rps_sim.agent_system.N, rps_sim.agent_system.grid_dim, entropy_spectrum=entropy_spectrum))
+            step_and_record(rps_sim, sim_state)
             steps_since_last_update += 1
             current_time = time.time()
             delta_time = current_time - last_update_time

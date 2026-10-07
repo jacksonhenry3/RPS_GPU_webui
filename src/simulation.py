@@ -2,7 +2,6 @@ import cupy as cp
 
 import time
 from algorithm import AgentSystem
-from visualization import SimulationVisualizer
 import networks
 from app_utils import log_sim
 
@@ -11,8 +10,10 @@ class Simulation:
     Orchestrates the entire simulation, acting as a bridge between the core
     algorithm, network generation, and visualization.
     """
-    def __init__(self):
+    def __init__(self, params=None, visualize=True):
+        self.visualize = visualize
         self.params = self._get_default_params()
+        self.params.update(params or {})
         self.time_step = 0
         self.steps_per_frame = 1
         self.strategy_history = []
@@ -21,7 +22,8 @@ class Simulation:
         self.visualizer = None
         self.initialize(self.params)
 
-    def _get_default_params(self):
+    @staticmethod
+    def _get_default_params():
         """Returns a dictionary of default simulation parameters."""
         return {
             'networkType': 'ring_1d_periodic', 'numAgents': 128,
@@ -31,7 +33,7 @@ class Simulation:
             'win': 2.0, 'tie': 1.5, 'loss': 0.0, 'kT': 100.0,
             'historyLength': 1_000_001,
             'renderRatio': 1.0,
-            'kymoAspect': 3.0
+            'kymoAspect': 3.0, 'bankBins': 3, 'bankEdges': None
         }
 
     def initialize(self, params):
@@ -47,7 +49,9 @@ class Simulation:
         self.agent_system = AgentSystem(
             N=self.num_agents, adjacency_matrix=adj_matrix, grid_dim=grid_dim
         )
-        self.visualizer = SimulationVisualizer(width, height, self.network_type)
+        if self.visualize:
+            from visualization import SimulationVisualizer
+            self.visualizer = SimulationVisualizer(width, height, self.network_type)
         self.update_parameters(params)
         self.reset()
         log_sim(f"Initialization complete. System has {self.num_agents} agents.")
@@ -62,14 +66,15 @@ class Simulation:
         self.time_step = 0
         self.strategy_history.clear()
         self.neighbor_history.clear()
-        self.visualizer.reset()
+        if self.visualizer is not None:
+            self.visualizer.reset()
         self.agent_system.reset_state(
             initial_condition=self.params['initialCondition'],
             bank_condition=self.params['bankCondition'],
             bank_value=self.params['bankValue']
         )
         log_sim(f"State reset to '{self.params['initialCondition']}' strategies and '{self.params['bankCondition']}' bank values.")
-        if "1d" in self.params['networkType']:
+        if self.visualizer is not None and "1d" in self.params['networkType']:
             self.visualizer.record_kymograph_history(
                 self.agent_system.agent_strategies,
                 self.agent_system.agent_bank_values,
@@ -83,20 +88,22 @@ class Simulation:
         self.agent_system.update_physics()
 
         # If it's a 1D kymograph, record history on every step.
-        if 'ring_1d' in self.network_type:
+        if self.visualizer is not None and 'ring_1d' in self.network_type:
             strategies = self.agent_system.agent_strategies
             bank_values = self.agent_system.agent_bank_values
             self.visualizer.record_kymograph_history(strategies, bank_values, self.time_step)
 
     def render(self):
         """Renders the current state using the agent's bank value."""
+        if self.visualizer is None:
+            return None
         strategies = self.agent_system.agent_strategies
         bank_values = self.agent_system.agent_bank_values
         return self.visualizer.render(strategies, bank_values, self.time_step)
 
     def is_finished(self):
         """Checks if the simulation has completed (for 1D kymograph)."""
-        return 'ring_1d' in self.network_type and self.time_step >= self.visualizer.HEIGHT
+        return self.visualizer is not None and 'ring_1d' in self.network_type and self.time_step >= self.visualizer.HEIGHT
 
     def needs_reinitialization(self, new_params):
         """Determines if a change in parameters requires a full re-initialization."""

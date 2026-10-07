@@ -157,6 +157,8 @@
 			    </select> 
                         </div>
                         <div>
+                            <label for="bank-bins" class="block text-sm mb-1">Bank bins (entropy)</label>
+                            <input type="number" id="bank-bins" value="3" min="1" step="1" class="param-input font-mono text-gray-600">
                             <label id="bank-value-label" for="bank-condition" class="block text-sm mb-1">Bank Value</label>
                             <div class="flex items-center gap-2">
                                 <select id="bank-condition" class="flex-grow bg-stone-50 border border-gray-300 rounded-md px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-400">
@@ -304,6 +306,7 @@
                     historyLength: 1000001, // Hardcoded for now
                     bankCondition: document.getElementById('bank-condition').value,
                     bankValue: parseFloat(document.getElementById('bank-value-input').value),
+                    bankBins: Math.max(1, parseInt(document.getElementById('bank-bins').value) || 3),
                     numAgents: parseInt(document.getElementById('num-agents').value),
                     renderRatio: parseFloat(document.getElementById('render-ratio').value),
                     kymoAspect: parseFloat(document.getElementById('kymo-aspect').value)
@@ -325,7 +328,7 @@
                 });
                 const standaloneControls = [
                     'network-type', 'initial-condition', 'selection-mode', 'score-calculation-mode',
-                    'bank-condition', 'bank-value-input', 'num-agents', 'render-ratio', 'kymo-aspect',
+                    'bank-condition', 'bank-value-input', 'bank-bins', 'num-agents', 'render-ratio', 'kymo-aspect',
                     'win-payoff-value', 'tie-payoff-value', 'loss-payoff-value', 'kt-param-value'
                 ];
                 standaloneControls.forEach(id => {

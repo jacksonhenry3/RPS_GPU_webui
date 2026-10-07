@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Batch outputs
+runs/
+slurm-*.out

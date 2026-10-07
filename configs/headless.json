@@ -1,0 +1,14 @@
+{
+  "networkType": "ring_1d_periodic",
+  "numAgents": 4096,
+  "initialCondition": "random",
+  "bankCondition": "constant",
+  "bankValue": 0.0,
+  "selectionMode": "global_random",
+  "scoreCalculationMode": "total",
+  "win": 2.0,
+  "tie": 1.5,
+  "loss": 0.0,
+  "kT": 100.0,
+  "bankBins": 3
+}

@@ -1,104 +1,65 @@
+"""CPU-only plots shared by the web frontend and persisted batch runs."""
+import csv
+from pathlib import Path
+
 import matplotlib
-matplotlib.use('Agg') # Use a non-interactive backend suitable for servers
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-import measurements
+COLORS = ('#009E73', '#E69F00', '#CC79A7', '#0072B2')
 
-# Define colors to match the UI, converting from RGB(255) to Matplotlib's 0-1 scale
-ROCK_COLOR = (44/255, 160/255, 148/255)
-PAPER_COLOR = (255/255, 127/255, 14/255)
-SCISSORS_COLOR = (148/255, 103/255, 189/255)
-UI_BG_COLOR = '#f8f7f5'
-PLOT_BG_COLOR = '#fdfaf6'
-TEXT_COLOR = '#5c524f'
-GRID_COLOR = '#e7e2dd'
 
-def _configure_plot_style(fig, ax, title, ylabel):
-    """Helper function to apply common styling to all plots."""
-    fig.patch.set_facecolor(UI_BG_COLOR)
-    ax.set_facecolor(PLOT_BG_COLOR)
-    ax.set_title(title, color=TEXT_COLOR, weight='bold')
-    ax.set_xlabel('Time Step', color=TEXT_COLOR)
-    ax.set_ylabel(ylabel, color=TEXT_COLOR)
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=GRID_COLOR)
-    for spine in ax.spines.values():
-        spine.set_edgecolor(GRID_COLOR)
-    ax.tick_params(colors=TEXT_COLOR)
+def plot_measurements(rows, output_dir):
+    """Render scalar measurement dictionaries using their actual step values."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if not rows:
+        return []
+    steps = np.array([float(row['step']) for row in rows])
+    groups = [
+        ('population_history', 'Agent population',
+         [('population_rock', 'Rock'), ('population_paper', 'Paper'), ('population_scissors', 'Scissors')]),
+        ('entropy_history', 'Shannon entropy (bits)',
+         [('strategy_bits', 'Strategy'), ('bank_bits', 'Bank'),
+          ('product_bits', 'Marginal outer product'), ('joint_bits', 'Observed joint')]),
+        ('normalized_entropy', 'Entropy / log₂(3k)',
+         [('product_normalized', 'Marginal outer product'), ('joint_normalized', 'Observed joint')]),
+        ('mutual_info_history', 'Mutual information (bits)',
+         [('strategy_bank_mi_bits', 'Strategy–bank'), ('temporal_mi_bits', 'Current–next state')]),
+        ('temporal_entropy', 'Shannon entropy (bits)',
+         [('temporal_product_bits', 'Current–next marginal product'),
+          ('temporal_joint_bits', 'Observed current–next joint'),
+          ('next_given_current_bits', 'Next given current')]),
+    ]
+    paths = []
+    for filename, ylabel, fields in groups:
+        fig, ax = plt.subplots(figsize=(8, 4), dpi=120)
+        plotted = False
+        for color, (key, label) in zip(COLORS, fields):
+            values = np.array([float(row[key]) if row.get(key) not in (None, '') else np.nan for row in rows])
+            if np.isfinite(values).any():
+                ax.plot(steps, values, color=color, label=label)
+                plotted = True
+        if not plotted:
+            plt.close(fig)
+            continue
+        ax.set(xlabel='Time step', ylabel=ylabel)
+        ax.grid(alpha=0.2)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.25), ncol=2, frameon=False)
+        path = output_dir / f'{filename}.png'
+        fig.savefig(path, bbox_inches='tight')
+        plt.close(fig)
+        paths.append(str(path))
+    return paths
 
-def plot_population_history(history_pop, static_dir):
-    """Generates a line plot of strategy counts over time."""
-    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-    
-    if not history_pop:
-        ax.text(0.5, 0.5, 'Simulation Paused - No Data Yet', ha='center', va='center', fontsize=12, color='gray')
-    else:
-        data = np.array(history_pop)
-        time_steps = np.arange(len(data))
-        total_agents = data[0, :].sum()
 
-        ax.plot(time_steps, data[:, 0], color=ROCK_COLOR, label='Rock', linewidth=2)
-        ax.plot(time_steps, data[:, 1], color=PAPER_COLOR, label='Paper', linewidth=2)
-        ax.plot(time_steps, data[:, 2], color=SCISSORS_COLOR, label='Scissors', linewidth=2)
-        
-        ax.set_ylim(0, total_agents if total_agents > 0 else 1)
-        ax.set_xlim(0, max(1, len(data) - 1))
-        ax.legend(frameon=False, labelcolor=TEXT_COLOR)
+def plot_saved_run(run_dir, output_dir):
+    """Plot even a partial run; only measurements.csv is needed."""
+    with (Path(run_dir) / 'measurements.csv').open(newline='') as handle:
+        return plot_measurements(list(csv.DictReader(handle)), output_dir)
 
-    _configure_plot_style(fig, ax, 'Strategy Population Over Time', 'Agent Population')
-    
-    filepath = os.path.join(static_dir, "population_history.png")
-    fig.savefig(filepath, format='png', bbox_inches='tight', pad_inches=0.2, facecolor=fig.get_facecolor())
-    plt.close(fig)
-    return filepath
-
-def _plot_distance_spectrum(history, static_dir, filename, title, ylabel):
-    """Shared renderer for per-distance time series (entropy, mutual info): one
-    line per sampled distance, colored by a viridis gradient."""
-    fig, ax = plt.subplots(figsize=(8, 4), dpi=100)
-
-    if not history:
-        ax.text(0.5, 0.5, 'Simulation Paused - No Data Yet', ha='center', va='center', fontsize=12, color='gray')
-    else:
-        data = np.array(history)  # (time_steps, num_distances)
-        time_steps = np.arange(data.shape[0])
-        num_distances = data.shape[1]
-        distances = measurements.ENTROPY_DISTANCES if num_distances == len(measurements.ENTROPY_DISTANCES) else range(1, num_distances + 1)
-        colors = plt.cm.viridis(np.linspace(0, 1, num_distances))
-
-        for i, dist in enumerate(distances):
-            ax.plot(time_steps, data[:, i], color=colors[i], linewidth=1.5, label=f'Distance {dist}')
-
-        data_min, data_max = np.min(data), np.max(data)
-        lower = data_min * 1.1 if data_min < 0 else data_min * 0.9
-        ax.set_ylim(lower, max(0.01, data_max * 1.1))
-        ax.set_xlim(0, max(1, len(data) - 1))
-        ax.legend(frameon=False, labelcolor=TEXT_COLOR, ncol=2, fontsize='small')
-
-    _configure_plot_style(fig, ax, title, ylabel)
-
-    filepath = os.path.join(static_dir, filename)
-    fig.savefig(filepath, format='png', bbox_inches='tight', pad_inches=0.2, facecolor=fig.get_facecolor())
-    plt.close(fig)
-    return filepath
-
-def plot_entropy_history(history_entropy, static_dir):
-    """Generates a plot of block entropy over time, one line per sampled distance."""
-    return _plot_distance_spectrum(history_entropy, static_dir, "entropy_history.png", 'Entropy Over Time (by Distance)', 'Entropy')
-
-def plot_mutual_information_history(history_mutual_info, static_dir):
-    """Generates a plot of mutual information over time, one line per sampled
-    distance. Decays toward 0 at distances beyond the correlation length, so
-    where each line flattens to ~0 marks the scale of emergent structure."""
-    return _plot_distance_spectrum(history_mutual_info, static_dir, "mutual_info_history.png", 'Mutual Information Over Time (by Distance)', 'Mutual Information (bits)')
 
 def generate_plots(sim_state, params, static_dir):
-    plot_paths = []
-    if sim_state.history_pop:
-        plot_paths.append(plot_population_history(sim_state.history_pop, static_dir))
-    if sim_state.history_entropy:
-        plot_paths.append(plot_entropy_history(sim_state.history_entropy, static_dir))
-    if sim_state.history_mutual_info:
-        plot_paths.append(plot_mutual_information_history(sim_state.history_mutual_info, static_dir))
-    return plot_paths
+    """Thin compatibility adapter for the existing web route."""
+    return plot_measurements(list(sim_state.history_measurements), static_dir)
